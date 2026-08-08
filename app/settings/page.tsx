@@ -290,7 +290,7 @@ export default function SettingsPage() {
                                 />
 
                                 <p className="mt-2 text-xs leading-5 text-neutral-500">
-                                    We'll use
+                                    We&apos;ll use
                                     this when
                                     push
                                     notifications
@@ -346,7 +346,7 @@ export default function SettingsPage() {
                                     className="mt-2 text-xs text-neutral-500 underline underline-offset-4 transition hover:text-neutral-300"
                                 >
                                     Use this
-                                    device's
+                                    device&apos;s
                                     timezone
                                 </button>
                             </Field>
