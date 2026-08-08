@@ -1,69 +1,329 @@
-import Image from "next/image";
+"use client";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  History,
+  Settings,
+  Utensils,
+} from "lucide-react";
+
+import { MealCard } from "@/components/meal-card";
+import { MealInput } from "@/components/meal-input";
+
+import type { LoggedMeal } from "@/lib/nutrition";
+
+const STORAGE_KEY =
+  "calorie-meals";
+
+const CALORIE_GOAL = 2200;
 
 export default function Home() {
+  const [meals, setMeals] =
+    useState<LoggedMeal[]>([]);
+
+  const [hydrated, setHydrated] =
+    useState(false);
+
+  useEffect(() => {
+    const raw =
+      localStorage.getItem(
+        STORAGE_KEY
+      );
+
+    if (raw) {
+      try {
+        const stored =
+          JSON.parse(raw);
+
+        setMeals(stored);
+      } catch {
+        localStorage.removeItem(
+          STORAGE_KEY
+        );
+      }
+    }
+
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(meals)
+    );
+  }, [meals, hydrated]);
+
+  const todaysMeals =
+    useMemo(() => {
+      const today =
+        new Date().toDateString();
+
+      return meals.filter(
+        (meal) => {
+          return (
+            new Date(
+              meal.createdAt
+            ).toDateString() ===
+            today
+          );
+        }
+      );
+    }, [meals]);
+
+  const totals =
+    useMemo(() => {
+      return todaysMeals.reduce(
+        (acc, meal) => ({
+          calories:
+            acc.calories +
+            meal.calories,
+
+          protein:
+            acc.protein +
+            meal.protein,
+
+          carbs:
+            acc.carbs +
+            meal.carbs,
+
+          fat:
+            acc.fat + meal.fat,
+        }),
+        {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        }
+      );
+    }, [todaysMeals]);
+
+  const progress =
+    Math.min(
+      totals.calories /
+        CALORIE_GOAL,
+      1
+    ) * 100;
+
+  const date =
+    new Intl.DateTimeFormat(
+      undefined,
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }
+    ).format(new Date());
+
+  function addMeal(
+    meal: LoggedMeal
+  ) {
+    setMeals((current) => [
+      ...current,
+      meal,
+    ]);
+  }
+
+  function deleteMeal(id: string) {
+    setMeals((current) =>
+      current.filter(
+        (meal) => meal.id !== id
+      )
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-dvh bg-neutral-950 text-neutral-100">
+      <div className="mx-auto flex min-h-dvh w-full max-w-xl flex-col">
+        <header className="px-5 pb-4 pt-8">
+          <p className="text-sm text-neutral-400">
+            {date}
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+          <h1 className="mt-1 text-xl font-semibold tracking-tight">
+            Today
+          </h1>
+        </header>
+
+        <section className="flex-1 border-t border-neutral-800 bg-neutral-950 px-5 pb-44 pt-6">
+          <div className="flex items-end gap-2">
+            <span className="text-5xl font-semibold tracking-[-0.05em] tabular-nums">
+              {Math.round(
+                totals.calories
+              ).toLocaleString()}
+            </span>
+
+            <span className="pb-1.5 text-sm text-neutral-400">
+              /{" "}
+              {CALORIE_GOAL.toLocaleString()}{" "}
+              kcal
+            </span>
+          </div>
+
+          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-neutral-800">
+            <div
+              className="h-full rounded-full bg-neutral-100 transition-[width] duration-500"
+              style={{
+                width: `${progress}%`,
+              }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+
+          <div className="mt-7 grid grid-cols-3 gap-4">
+            <Macro
+              value={totals.protein}
+              label="Protein"
+            />
+
+            <Macro
+              value={totals.carbs}
+              label="Carbs"
+            />
+
+            <Macro
+              value={totals.fat}
+              label="Fat"
+            />
+          </div>
+        </section>
+
+        <section className="flex-1 border-t border-neutral-800 bg-neutral-950 px-5 pb-44 pt-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+              Today&apos;s meals
+            </h2>
+
+            <span className="text-xs text-neutral-600">
+              {todaysMeals.length}
+            </span>
+          </div>
+
+          {hydrated &&
+            todaysMeals.length ===
+              0 && (
+              <EmptyState />
+            )}
+
+          {todaysMeals
+            .slice()
+            .reverse()
+            .map((meal) => (
+              <MealCard
+                key={meal.id}
+                meal={meal}
+                onDelete={
+                  deleteMeal
+                }
+              />
+            ))}
+        </section>
+
+        <div className="fixed inset-x-0 bottom-0 z-20">
+          <div className="mx-auto w-full max-w-xl border-t border-neutral-800 bg-neutral-950/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+              <MealInput
+                  onMealAdded={addMeal}
+              />
+
+              <nav className="mt-3 grid grid-cols-3">
+                  <NavItem
+                      icon={
+                          <Utensils size={17} />
+                      }
+                      label="Today"
+                      active
+                  />
+
+                  <NavItem
+                      icon={
+                          <History size={17} />
+                      }
+                      label="History"
+                  />
+
+                  <NavItem
+                      icon={
+                          <Settings size={17} />
+                      }
+                      label="Settings"
+                  />
+              </nav>
+          </div>
         </div>
-      </main>
+      </div>
+    </main>
+  );
+}
+
+function Macro({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) {
+  return (
+    <div>
+      <p className="font-semibold tabular-nums">
+        {Math.round(value)}g
+      </p>
+
+      <p className="mt-1 text-xs text-neutral-400">
+        {label}
+      </p>
     </div>
   );
+}
+
+function EmptyState() {
+    return (
+        <div className="flex min-h-52 flex-col items-center justify-center text-center">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-neutral-900">
+                <Utensils
+                    size={18}
+                    className="text-neutral-500"
+                />
+            </div>
+
+            <p className="mt-4 text-sm font-medium text-neutral-200">
+                Nothing logged yet
+            </p>
+
+            <p className="mt-1 text-sm text-neutral-500">
+                Just tell me what you ate.
+            </p>
+        </div>
+    );
+}
+function NavItem({
+    icon,
+    label,
+    active = false,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    active?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] transition-colors ${
+                active
+                    ? "text-white"
+                    : "text-neutral-500 hover:text-neutral-300"
+            }`}
+        >
+            {icon}
+
+            {label}
+        </button>
+    );
 }
