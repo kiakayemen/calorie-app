@@ -6,11 +6,13 @@ import {
   useState,
 } from "react";
 
+import { AppNav } from "@/components/app-nav";
+
+import type { AppSettings } from "@/lib/settings";
+
 import { readJsonResponse } from "@/lib/http";
 
 import {
-  History,
-  Settings,
   Utensils,
 } from "lucide-react";
 
@@ -19,58 +21,169 @@ import { MealInput } from "@/components/meal-input";
 
 import type { LoggedMeal } from "@/lib/nutrition";
 
-const CALORIE_GOAL = 2200;
-
 export default function Home() {
   const [meals, setMeals] =
     useState<LoggedMeal[]>([]);
 
   const [hydrated, setHydrated] =
     useState(false);
+  
+  const [loaded, setLoaded] =
+    useState(false);
+  
+  const [settings, setSettings] =
+    useState<AppSettings>({
+        calorieGoal: 2200,
+        notificationHour: 21,
+        notificationMinute: 0,
+        timezone:
+            Intl.DateTimeFormat()
+                .resolvedOptions()
+                .timeZone,
+    });
+
+  // useEffect(() => {
+  //     async function loadMeals() {
+  //         try {
+  //             const response = await fetch(
+  //                 "/api/meals",
+  //                 {
+  //                     cache: "no-store",
+  //                 }
+  //             );
+
+  //             const data = await readJsonResponse<
+  //                 LoggedMeal[] | {
+  //                     error: string;
+  //                 }
+  //             >(response);
+
+  //             if (!response.ok) {
+  //                 throw new Error(
+  //                     "error" in data
+  //                         ? data.error
+  //                         : "Couldn't load meals."
+  //                 );
+  //             }
+
+  //             if (!Array.isArray(data)) {
+  //                 throw new Error(
+  //                     "Invalid meals response."
+  //                 );
+  //             }
+
+  //             setMeals(data);
+  //         } catch (error) {
+  //             console.error(
+  //                 "Failed to load meals:",
+  //                 error
+  //             );
+  //         } finally {
+  //             setLoaded(true);
+  //         }
+  //     }
+
+  //     void loadMeals();
+  // }, []);
 
   useEffect(() => {
-      async function loadMeals() {
-          try {
-              const response = await fetch(
-                  "/api/meals",
-                  {
-                      cache: "no-store",
-                  }
-              );
+    async function loadData() {
+        try {
+            const [
+                mealsResponse,
+                settingsResponse,
+            ] =
+                await Promise.all([
+                    fetch(
+                        "/api/meals",
+                        {
+                            cache:
+                                "no-store",
+                        }
+                    ),
 
-              const data = await readJsonResponse<
-                  LoggedMeal[] | {
-                      error: string;
-                  }
-              >(response);
+                    fetch(
+                        "/api/settings",
+                        {
+                            cache:
+                                "no-store",
+                        }
+                    ),
+                ]);
 
-              if (!response.ok) {
-                  throw new Error(
-                      "error" in data
-                          ? data.error
-                          : "Couldn't load meals."
-                  );
-              }
+            const mealsData =
+                await readJsonResponse<
+                    LoggedMeal[] | {
+                        error: string;
+                    }
+                >(
+                    mealsResponse
+                );
 
-              if (!Array.isArray(data)) {
-                  throw new Error(
-                      "Invalid meals response."
-                  );
-              }
+            const settingsData =
+                await readJsonResponse<
+                    AppSettings | {
+                        error: string;
+                    }
+                >(
+                    settingsResponse
+                );
 
-              setMeals(data);
-          } catch (error) {
-              console.error(
-                  "Failed to load meals:",
-                  error
-              );
-          } finally {
-              setLoaded(true);
-          }
-      }
+            if (
+                !mealsResponse.ok
+            ) {
+                throw new Error(
+                    "error" in
+                    mealsData
+                        ? mealsData.error
+                        : "Couldn't load meals."
+                );
+            }
 
-      void loadMeals();
-  }, []);
+            if (
+                !settingsResponse.ok
+            ) {
+                throw new Error(
+                    "error" in
+                    settingsData
+                        ? settingsData.error
+                        : "Couldn't load settings."
+                );
+            }
+
+            if (
+                Array.isArray(
+                    mealsData
+                )
+            ) {
+                setMeals(
+                    mealsData
+                );
+            }
+
+            if (
+                !(
+                    "error" in
+                    settingsData
+                )
+            ) {
+                setSettings(
+                    settingsData
+                );
+            }
+        } catch (error) {
+            console.error(
+                "Failed to load app data:",
+                error
+            );
+        } finally {
+            setLoaded(true);
+        }
+    }
+
+    void loadData();
+}, []);
+
   const todaysMeals =
     useMemo(() => {
       const today =
@@ -119,7 +232,7 @@ export default function Home() {
   const progress =
     Math.min(
       totals.calories /
-        CALORIE_GOAL,
+        settings.calorieGoal,
       1
     ) * 100;
 
@@ -203,7 +316,7 @@ export default function Home() {
 
             <span className="pb-1.5 text-sm text-neutral-400">
               /{" "}
-              {CALORIE_GOAL.toLocaleString()}{" "}
+              {settings.calorieGoal.toLocaleString()}{" "}
               kcal
             </span>
           </div>
@@ -271,30 +384,7 @@ export default function Home() {
               <MealInput
                   onMealAdded={addMeal}
               />
-
-              <nav className="mt-3 grid grid-cols-3">
-                  <NavItem
-                      icon={
-                          <Utensils size={17} />
-                      }
-                      label="Today"
-                      active
-                  />
-
-                  <NavItem
-                      icon={
-                          <History size={17} />
-                      }
-                      label="History"
-                  />
-
-                  <NavItem
-                      icon={
-                          <Settings size={17} />
-                      }
-                      label="Settings"
-                  />
-              </nav>
+            <AppNav active="today" />
           </div>
         </div>
       </div>
