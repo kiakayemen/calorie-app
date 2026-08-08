@@ -8,6 +8,8 @@ import {
 
 import { AppNav } from "@/components/app-nav";
 
+import { TodaySkeleton } from "@/components/skeletons/today-skeleton";
+
 import type { AppSettings } from "@/lib/settings";
 
 import { readJsonResponse } from "@/lib/http";
@@ -293,6 +295,11 @@ export default function Home() {
           );
       }
   }
+
+  if (!loaded) {
+      return <TodaySkeleton />;
+  }
+
   return (
     <main className="min-h-dvh bg-neutral-950 text-neutral-100">
       <div className="mx-auto flex min-h-dvh w-full max-w-xl flex-col">
@@ -430,29 +437,5 @@ function EmptyState() {
                 Just tell me what you ate.
             </p>
         </div>
-    );
-}
-function NavItem({
-    icon,
-    label,
-    active = false,
-}: {
-    icon: React.ReactNode;
-    label: string;
-    active?: boolean;
-}) {
-    return (
-        <button
-            type="button"
-            className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] transition-colors ${
-                active
-                    ? "text-white"
-                    : "text-neutral-500 hover:text-neutral-300"
-            }`}
-        >
-            {icon}
-
-            {label}
-        </button>
     );
 }
