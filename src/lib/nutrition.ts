@@ -15,9 +15,12 @@ export const MealSchema = z.object({
     clarificationQuestion: z.string().nullable(),
 });
 
-export type MealNutrition = z.infer<typeof MealSchema>;
+export type MealNutrition = z.infer<
+    typeof MealSchema
+>;
 
 export type LoggedMeal = MealNutrition & {
     id: string;
     createdAt: string;
+    eatenAt: string;
 };

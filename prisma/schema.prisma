@@ -1,13 +1,41 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+    provider = "postgresql"
+}
+
+model Meal {
+    id                    String   @id @default(cuid())
+    title                 String
+    description           String
+
+    calories              Float
+    protein               Float
+    carbs                 Float
+    fat                   Float
+
+    confidence            Float
+
+    needsClarification    Boolean  @default(false)
+    clarificationQuestion String?
+
+    eatenAt                DateTime @default(now())
+    createdAt              DateTime @default(now())
+    updatedAt              DateTime @updatedAt
+
+    @@index([eatenAt])
+}
+
+model Settings {
+    id                 String   @id @default("default")
+    calorieGoal        Int      @default(2200)
+    notificationHour   Int      @default(21)
+    notificationMinute Int      @default(0)
+    timezone           String   @default("Asia/Tehran")
+
+    createdAt          DateTime @default(now())
+    updatedAt          DateTime @updatedAt
 }

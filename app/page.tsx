@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import { readJsonResponse } from "@/lib/http";
+
 import {
   History,
   Settings,
@@ -17,9 +19,6 @@ import { MealInput } from "@/components/meal-input";
 
 import type { LoggedMeal } from "@/lib/nutrition";
 
-const STORAGE_KEY =
-  "calorie-meals";
-
 const CALORIE_GOAL = 2200;
 
 export default function Home() {
@@ -30,38 +29,48 @@ export default function Home() {
     useState(false);
 
   useEffect(() => {
-    const raw =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
+      async function loadMeals() {
+          try {
+              const response = await fetch(
+                  "/api/meals",
+                  {
+                      cache: "no-store",
+                  }
+              );
 
-    if (raw) {
-      try {
-        const stored =
-          JSON.parse(raw);
+              const data = await readJsonResponse<
+                  LoggedMeal[] | {
+                      error: string;
+                  }
+              >(response);
 
-        setMeals(stored);
-      } catch {
-        localStorage.removeItem(
-          STORAGE_KEY
-        );
+              if (!response.ok) {
+                  throw new Error(
+                      "error" in data
+                          ? data.error
+                          : "Couldn't load meals."
+                  );
+              }
+
+              if (!Array.isArray(data)) {
+                  throw new Error(
+                      "Invalid meals response."
+                  );
+              }
+
+              setMeals(data);
+          } catch (error) {
+              console.error(
+                  "Failed to load meals:",
+                  error
+              );
+          } finally {
+              setLoaded(true);
+          }
       }
-    }
 
-    setHydrated(true);
+      void loadMeals();
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(meals)
-    );
-  }, [meals, hydrated]);
-
   const todaysMeals =
     useMemo(() => {
       const today =
@@ -133,14 +142,44 @@ export default function Home() {
     ]);
   }
 
-  function deleteMeal(id: string) {
-    setMeals((current) =>
-      current.filter(
-        (meal) => meal.id !== id
-      )
-    );
-  }
+  async function deleteMeal(
+      id: string
+  ) {
+      const previousMeals =
+          meals;
 
+      setMeals((current) =>
+          current.filter(
+              (meal) =>
+                  meal.id !== id
+          )
+      );
+
+      try {
+          const response =
+              await fetch(
+                  `/api/meals/${id}`,
+                  {
+                      method:
+                          "DELETE",
+                  }
+              );
+
+          if (!response.ok) {
+              throw new Error(
+                  "Delete failed."
+              );
+          }
+      } catch (error) {
+          console.error(
+              error
+          );
+
+          setMeals(
+              previousMeals
+          );
+      }
+  }
   return (
     <main className="min-h-dvh bg-neutral-950 text-neutral-100">
       <div className="mx-auto flex min-h-dvh w-full max-w-xl flex-col">

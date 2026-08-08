@@ -1,244 +1,300 @@
 "use client";
 
 import {
-  FormEvent,
-  useState,
+    FormEvent,
+    useState,
 } from "react";
 
 import {
-  ArrowUp,
-  Loader2,
+    ArrowUp,
+    Loader2,
 } from "lucide-react";
 
+import { readJsonResponse } from "@/lib/http";
+
 import type {
-  LoggedMeal,
-  MealNutrition,
+    LoggedMeal,
+    MealNutrition,
 } from "@/lib/nutrition";
 
 type Props = {
-  onMealAdded: (
-    meal: LoggedMeal
-  ) => void;
+    onMealAdded: (
+        meal: LoggedMeal
+    ) => void;
 };
 
 type Clarification = {
-  originalText: string;
-  question: string;
+    originalText: string;
+    question: string;
 };
 
 export function MealInput({
-  onMealAdded,
+    onMealAdded,
 }: Props) {
-  const [text, setText] =
-    useState("");
+    const [text, setText] =
+        useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+    const [loading, setLoading] =
+        useState(false);
 
-  const [error, setError] =
-    useState<string | null>(null);
+    const [error, setError] =
+        useState<string | null>(null);
 
-  const [
-    clarification,
-    setClarification,
-  ] =
-    useState<Clarification | null>(
-      null
-    );
-
-  async function parseMeal(
-    value: string
-  ) {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        "/api/meals/parse",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            text: value,
-          }),
-        }
-      );
-
-      const data =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ??
-            "Something went wrong."
+    const [
+        clarification,
+        setClarification,
+    ] =
+        useState<Clarification | null>(
+            null
         );
-      }
 
-      const meal =
-        data as MealNutrition;
+    async function saveMeal(
+        meal: MealNutrition
+    ) {
+        const response = await fetch(
+            "/api/meals",
+            {
+                method: "POST",
 
-      if (
-        meal.needsClarification &&
-        meal.clarificationQuestion
-      ) {
-        setClarification({
-          originalText: value,
-          question:
-            meal.clarificationQuestion,
-        });
+                headers: {
+                    "Content-Type":
+                        "application/json",
+                },
 
-        setText("");
+                body: JSON.stringify(
+                    meal
+                ),
+            }
+        );
 
-        return;
-      }
+        const data = await readJsonResponse<
+            LoggedMeal | {
+                error: string;
+            }
+        >(response);
 
-      const loggedMeal: LoggedMeal =
-        {
-          ...meal,
+        if (!response.ok) {
+            throw new Error(
+                "error" in data
+                    ? data.error
+                    : "Couldn't save meal."
+            );
+        }
 
-          id: crypto.randomUUID(),
+        if ("error" in data) {
+            throw new Error(
+                data.error
+            );
+        }
 
-          createdAt:
-            new Date().toISOString(),
-        };
-
-      onMealAdded(loggedMeal);
-
-      setClarification(null);
-      setText("");
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleSubmit(
-    event: FormEvent
-  ) {
-    event.preventDefault();
-
-    const value = text.trim();
-
-    if (!value || loading) {
-      return;
+        onMealAdded(data);
     }
 
-    if (clarification) {
-      const combined = `
-The original food description was:
+    async function parseMeal(
+        value: string
+    ) {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response =
+                await fetch(
+                    "/api/meals/parse",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        body:
+                            JSON.stringify(
+                                {
+                                    text: value,
+                                }
+                            ),
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error ??
+                        "Something went wrong."
+                );
+            }
+
+            const meal =
+                data;
+
+            if (
+                meal.needsClarification &&
+                meal.clarificationQuestion
+            ) {
+                setClarification({
+                    originalText:
+                        value,
+
+                    question:
+                        meal.clarificationQuestion,
+                });
+
+                setText("");
+
+                return;
+            }
+
+            await saveMeal(meal);
+
+            setClarification(null);
+            setText("");
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Something went wrong."
+            );
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleSubmit(
+        event: FormEvent
+    ) {
+        event.preventDefault();
+
+        const value =
+            text.trim();
+
+        if (!value || loading) {
+            return;
+        }
+
+        if (clarification) {
+            const combined = `
+Original food description:
 
 "${clarification.originalText}"
 
-You asked:
+Clarification question:
 
 "${clarification.question}"
 
-The user answered:
+User answer:
 
 "${value}"
 
-Use the original description AND the answer to estimate the final meal nutrition.
+Use the original description and the user's answer to estimate the final nutrition.
 
-Do not ask the same clarification again.
-      `.trim();
+Do not ask the same clarification question again.
+            `.trim();
 
-      await parseMeal(combined);
+            await parseMeal(
+                combined
+            );
 
-      return;
+            return;
+        }
+
+        await parseMeal(value);
     }
 
-    await parseMeal(value);
-  }
+    return (
+        <div className="space-y-3">
+            {clarification && (
+                <div className="rounded-2xl bg-neutral-900 px-4 py-3">
+                    <p className="text-sm font-medium text-neutral-100">
+                        {
+                            clarification.question
+                        }
+                    </p>
 
-  return (
-    <div className="space-y-3">
-      {clarification && (
-        <div className="rounded-2xl bg-neutral-900 px-4 py-3">
-          <p className="text-sm font-medium text-neutral-100">
-            {
-              clarification.question
-            }
-          </p>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setClarification(
+                                null
+                            );
 
-          <button
-            type="button"
-            onClick={() => {
-              setClarification(null);
-              setText("");
-            }}
-            className="mt-2 text-xs text-neutral-400 underline underline-offset-4"
-          >
-            Cancel
-          </button>
+                            setText("");
+                        }}
+                        className="mt-2 text-xs text-neutral-500 underline underline-offset-4 hover:text-neutral-300"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            )}
+
+            {error && (
+                <p className="px-1 text-sm text-red-400">
+                    {error}
+                </p>
+            )}
+
+            <form
+                onSubmit={
+                    handleSubmit
+                }
+                className="flex items-end gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 p-2 shadow-sm"
+            >
+                <textarea
+                    value={text}
+                    rows={1}
+                    disabled={loading}
+                    placeholder={
+                        clarification
+                            ? "Your answer..."
+                            : "What did you eat?"
+                    }
+                    onChange={(
+                        event
+                    ) =>
+                        setText(
+                            event.target
+                                .value
+                        )
+                    }
+                    onKeyDown={(
+                        event
+                    ) => {
+                        if (
+                            event.key ===
+                                "Enter" &&
+                            !event.shiftKey
+                        ) {
+                            event.preventDefault();
+
+                            event.currentTarget.form?.requestSubmit();
+                        }
+                    }}
+                    className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] leading-6 text-neutral-100 outline-none placeholder:text-neutral-500"
+                />
+
+                <button
+                    type="submit"
+                    disabled={
+                        loading ||
+                        !text.trim()
+                    }
+                    aria-label="Log food"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-600"
+                >
+                    {loading ? (
+                        <Loader2
+                            size={18}
+                            className="animate-spin"
+                        />
+                    ) : (
+                        <ArrowUp
+                            size={18}
+                        />
+                    )}
+                </button>
+            </form>
         </div>
-      )}
-
-      {error && (
-        <p className="px-1 text-sm text-red-500">
-          {error}
-        </p>
-      )}
-
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-end gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 p-2 shadow-sm"
-      >
-        <textarea
-          value={text}
-          rows={1}
-          disabled={loading}
-          placeholder={
-            clarification
-              ? "Your answer..."
-              : "What did you eat?"
-          }
-          onChange={(event) =>
-            setText(
-              event.target.value
-            )
-          }
-          onKeyDown={(event) => {
-            if (
-              event.key ===
-                "Enter" &&
-              !event.shiftKey
-            ) {
-              event.preventDefault();
-
-              event.currentTarget.form?.requestSubmit();
-            }
-          }}
-          className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] leading-6 text-neutral-100 outline-none placeholder:text-neutral-500"
-        />
-
-        <button
-          type="submit"
-          disabled={
-            loading || !text.trim()
-          }
-          aria-label="Log food"
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-600"
-        >
-          {loading ? (
-            <Loader2
-              size={18}
-              className="animate-spin"
-            />
-          ) : (
-            <ArrowUp size={18} />
-          )}
-        </button>
-      </form>
-    </div>
-  );
+    );
 }
