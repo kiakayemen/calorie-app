@@ -45,7 +45,8 @@ export default function RootLayout({
             </head>
 
             <body>
-                {children}
+              <ServiceWorkerRegister />
+              {children}
             </body>
         </html>
     );
