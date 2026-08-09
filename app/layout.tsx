@@ -3,6 +3,8 @@ import type {
     Viewport,
 } from "next";
 
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
