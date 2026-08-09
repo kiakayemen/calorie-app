@@ -1,3 +1,5 @@
+// app/api/push/test/route.ts
+
 import { NextRequest } from "next/server";
 
 import { db } from "@/lib/db";
@@ -30,85 +32,114 @@ export async function POST(
         );
     }
 
-    const subscriptions =
-        await db.pushSubscription.findMany();
+    try {
+        const subscriptions =
+            await db.pushSubscription.findMany();
 
-    let sent = 0;
-    let removed = 0;
+        let sent = 0;
+        let removed = 0;
+        let failed = 0;
 
-    for (
-        const subscription of
-        subscriptions
-    ) {
-        try {
-            await sendPush(
-                {
-                    endpoint:
-                        subscription.endpoint,
-
-                    keys: {
-                        p256dh:
-                            subscription.p256dh,
-
-                        auth:
-                            subscription.auth,
-                    },
-                },
-
-                {
-                    title: "Calorie",
-
-                    body:
-                        "Push notifications are working 🎉",
-
-                    url: "/",
-
-                    tag:
-                        "push-test",
-                }
-            );
-
-            sent++;
-        } catch (error) {
-            const statusCode =
-                typeof error ===
-                    "object" &&
-                error !== null &&
-                "statusCode" in
-                    error
-                    ? Number(
-                        error.statusCode
-                    )
-                    : undefined;
-
-            if (
-                statusCode ===
-                    404 ||
-                statusCode ===
-                    410
-            ) {
-                await db.pushSubscription.delete(
+        for (
+            const subscription of
+            subscriptions
+        ) {
+            try {
+                await sendPush(
                     {
-                        where: {
-                            id: subscription.id,
+                        endpoint:
+                            subscription.endpoint,
+
+                        keys: {
+                            p256dh:
+                                subscription.p256dh,
+
+                            auth:
+                                subscription.auth,
                         },
+                    },
+
+                    {
+                        title:
+                            "Calorie",
+
+                        body:
+                            "Push notifications are working 🎉",
+
+                        url: "/",
+
+                        tag:
+                            "push-test",
                     }
                 );
 
-                removed++;
+                sent++;
+            } catch (error) {
+                console.error(
+                    "Push send failed:",
+                    error
+                );
 
-                continue;
+                const statusCode =
+                    typeof error ===
+                        "object" &&
+                    error !== null &&
+                    "statusCode" in
+                        error
+                        ? Number(
+                            error.statusCode
+                        )
+                        : undefined;
+
+                if (
+                    statusCode ===
+                        404 ||
+                    statusCode ===
+                        410
+                ) {
+                    await db.pushSubscription.delete(
+                        {
+                            where: {
+                                id:
+                                    subscription.id,
+                            },
+                        }
+                    );
+
+                    removed++;
+
+                    continue;
+                }
+
+                failed++;
             }
-
-            console.error(
-                "Push send failed:",
-                error
-            );
         }
-    }
 
-    return Response.json({
-        sent,
-        removed,
-    });
+        return Response.json({
+            subscriptions:
+                subscriptions.length,
+
+            sent,
+            removed,
+            failed,
+        });
+    } catch (error) {
+        console.error(
+            "POST /api/push/test failed:",
+            error
+        );
+
+        return Response.json(
+            {
+                error:
+                    error instanceof
+                    Error
+                        ? error.message
+                        : "Push test failed.",
+            },
+            {
+                status: 500,
+            }
+        );
+    }
 }
