@@ -20,7 +20,9 @@ function urlBase64ToUint8Array(
 
     const output =
         new Uint8Array(
-            rawData.length
+            new ArrayBuffer(
+                rawData.length
+            )
         );
 
     for (
@@ -36,15 +38,28 @@ function urlBase64ToUint8Array(
 }
 
 export function supportsPush() {
+    if (
+        typeof window ===
+        "undefined"
+    ) {
+        return false;
+    }
+
     return (
         "serviceWorker" in
             navigator &&
-        "PushManager" in window &&
-        "Notification" in window
+        "PushManager" in
+            window &&
+        "Notification" in
+            window
     );
 }
 
 export async function getPushSubscription() {
+    if (!supportsPush()) {
+        return null;
+    }
+
     const registration =
         await navigator
             .serviceWorker
@@ -56,38 +71,57 @@ export async function getPushSubscription() {
 }
 
 export async function subscribeToPush() {
+    if (!supportsPush()) {
+        throw new Error(
+            "Push notifications are not supported."
+        );
+    }
+
     const publicKey =
         process.env
             .NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
     if (!publicKey) {
         throw new Error(
-            "VAPID public key is missing."
+            "NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing."
         );
     }
 
-    if (!supportsPush()) {
-        throw new Error(
-            "Push notifications aren't supported on this device."
-        );
-    }
+    console.log(
+        "Requesting notification permission..."
+    );
 
     const permission =
-        await Notification.requestPermission();
+        await Notification
+            .requestPermission();
+
+    console.log(
+        "Permission result:",
+        permission
+    );
 
     if (
         permission !==
         "granted"
     ) {
         throw new Error(
-            "Notification permission wasn't granted."
+            `Notification permission is ${permission}.`
         );
     }
+
+    console.log(
+        "Waiting for service worker..."
+    );
 
     const registration =
         await navigator
             .serviceWorker
             .ready;
+
+    console.log(
+        "Service worker ready:",
+        registration
+    );
 
     let subscription =
         await registration
@@ -95,6 +129,10 @@ export async function subscribeToPush() {
             .getSubscription();
 
     if (!subscription) {
+        console.log(
+            "Creating push subscription..."
+        );
+
         subscription =
             await registration
                 .pushManager
@@ -109,6 +147,11 @@ export async function subscribeToPush() {
                 });
     }
 
+    console.log(
+        "Subscription:",
+        subscription.toJSON()
+    );
+
     const response =
         await fetch(
             "/api/push/subscribe",
@@ -120,15 +163,26 @@ export async function subscribeToPush() {
                         "application/json",
                 },
 
-                body: JSON.stringify(
-                    subscription
-                ),
+                body:
+                    JSON.stringify(
+                        subscription
+                    ),
             }
         );
 
+    const responseText =
+        await response.text();
+
+    console.log(
+        "Subscribe API:",
+        response.status,
+        responseText
+    );
+
     if (!response.ok) {
         throw new Error(
-            "Couldn't save push subscription."
+            responseText ||
+                "Couldn't save push subscription."
         );
     }
 
@@ -146,7 +200,8 @@ export async function unsubscribeFromPush() {
     const endpoint =
         subscription.endpoint;
 
-    await subscription.unsubscribe();
+    await subscription
+        .unsubscribe();
 
     await fetch(
         "/api/push/unsubscribe",
@@ -158,9 +213,10 @@ export async function unsubscribeFromPush() {
                     "application/json",
             },
 
-            body: JSON.stringify({
-                endpoint,
-            }),
+            body:
+                JSON.stringify({
+                    endpoint,
+                }),
         }
     );
 }

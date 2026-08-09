@@ -20,10 +20,17 @@ import {
 
 export function PushSettings() {
     const [supported, setSupported] =
-        useState(true);
+        useState<boolean | null>(
+            null
+        );
 
     const [subscribed, setSubscribed] =
         useState(false);
+
+    const [permission, setPermission] =
+        useState<
+            NotificationPermission | "unsupported"
+        >("unsupported");
 
     const [loading, setLoading] =
         useState(true);
@@ -35,12 +42,29 @@ export function PushSettings() {
 
     useEffect(() => {
         async function check() {
-            if (!supportsPush()) {
-                setSupported(false);
+            if (
+                typeof window ===
+                "undefined"
+            ) {
+                return;
+            }
+
+            const isSupported =
+                supportsPush();
+
+            setSupported(
+                isSupported
+            );
+
+            if (!isSupported) {
                 setLoading(false);
 
                 return;
             }
+
+            setPermission(
+                Notification.permission
+            );
 
             try {
                 const subscription =
@@ -53,6 +77,7 @@ export function PushSettings() {
                 );
             } catch (error) {
                 console.error(
+                    "Push state check failed:",
                     error
                 );
             } finally {
@@ -67,11 +92,44 @@ export function PushSettings() {
         setLoading(true);
         setError(null);
 
+        console.log(
+            "Enable notifications clicked"
+        );
+
         try {
-            await subscribeToPush();
+            console.log(
+                "Current permission:",
+                Notification.permission
+            );
+
+            console.log(
+                "Push supported:",
+                supportsPush()
+            );
+
+            const subscription =
+                await subscribeToPush();
+
+            console.log(
+                "Push subscription created:",
+                subscription.toJSON()
+            );
+
+            setPermission(
+                Notification.permission
+            );
 
             setSubscribed(true);
         } catch (error) {
+            console.error(
+                "Enable push failed:",
+                error
+            );
+
+            setPermission(
+                Notification.permission
+            );
+
             setError(
                 error instanceof Error
                     ? error.message
@@ -101,6 +159,12 @@ export function PushSettings() {
         }
     }
 
+    if (
+        supported === null
+    ) {
+        return null;
+    }
+
     if (!supported) {
         return (
             <div>
@@ -110,9 +174,8 @@ export function PushSettings() {
 
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
                     Push notifications
-                    aren&apos;t available in
-                    this browser or
-                    installation mode.
+                    aren&apos;t supported in
+                    this browser or mode.
                 </p>
             </div>
         );
@@ -124,6 +187,13 @@ export function PushSettings() {
                 <div>
                     <p className="text-sm font-medium text-neutral-200">
                         Push notifications
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-neutral-500">
+                        Permission:{" "}
+                        <span className="text-neutral-300">
+                            {permission}
+                        </span>
                     </p>
 
                     <p className="mt-1 text-sm leading-6 text-neutral-500">
