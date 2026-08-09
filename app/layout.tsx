@@ -1,24 +1,50 @@
-import type { Metadata } from "next";
+import type {
+    Metadata,
+    Viewport,
+} from "next";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Calorie",
-  description: "The stupidly simple calorie tracker.",
+    title: "Calorie",
+
+    description:
+        "A stupidly simple AI-powered calorie tracker.",
+
+    applicationName: "Calorie",
+
+    appleWebApp: {
+        capable: true,
+        title: "Calorie",
+        statusBarStyle: "black-translucent",
+    },
+
+    icons: {
+        apple:
+            "/icons/icon-192.png",
+    },
+};
+
+export const viewport: Viewport = {
+    themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <head>
-        <meta name="darkreader-lock" />
-      </head>
+    return (
+        <html lang="en">
+            <head>
+                <meta
+                    name="darkreader-lock"
+                />
+            </head>
 
-      <body>{children}</body>
-    </html>
-  );
+            <body>
+                {children}
+            </body>
+        </html>
+    );
 }
