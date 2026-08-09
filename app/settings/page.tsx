@@ -6,6 +6,8 @@ import {
     useState,
 } from "react";
 
+import { PushSettings } from "@/components/settings/push-settings";
+
 import {
     Check,
     Loader2,
@@ -358,7 +360,9 @@ export default function SettingsPage() {
                                     }
                                 </p>
                             )}
-
+                            <div className="border-t border-neutral-800 pt-7">
+                                <PushSettings />
+                            </div>
                             <button
                                 type="submit"
                                 disabled={
