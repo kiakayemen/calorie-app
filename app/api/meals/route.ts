@@ -1,57 +1,91 @@
-import { NextRequest } from "next/server";
+import {
+    NextRequest,
+} from "next/server";
+
+import {
+    auth,
+} from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 import { MealSchema } from "@/lib/nutrition";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime =
+    "nodejs";
+
+export const dynamic =
+    "force-dynamic";
 
 export async function GET() {
     try {
+        const {
+            userId,
+        } =
+            await auth();
+
+        if (!userId) {
+            return Response.json(
+                {
+                    error:
+                        "Unauthorized.",
+                },
+                {
+                    status: 401,
+                }
+            );
+        }
+
         const meals =
             await db.meal.findMany({
+                where: {
+                    userId,
+                },
+
                 orderBy: {
-                    eatenAt: "desc",
+                    eatenAt:
+                        "desc",
                 },
             });
 
         return Response.json(
-            meals.map((meal) => ({
-                id: meal.id,
+            meals.map(
+                (meal) => ({
+                    id:
+                        meal.id,
 
-                title:
-                    meal.title,
+                    title:
+                        meal.title,
 
-                description:
-                    meal.description,
+                    description:
+                        meal.description,
 
-                calories:
-                    meal.calories,
+                    calories:
+                        meal.calories,
 
-                protein:
-                    meal.protein,
+                    protein:
+                        meal.protein,
 
-                carbs:
-                    meal.carbs,
+                    carbs:
+                        meal.carbs,
 
-                fat:
-                    meal.fat,
+                    fat:
+                        meal.fat,
 
-                confidence:
-                    meal.confidence,
+                    confidence:
+                        meal.confidence,
 
-                needsClarification:
-                    meal.needsClarification,
+                    needsClarification:
+                        meal.needsClarification,
 
-                clarificationQuestion:
-                    meal.clarificationQuestion,
+                    clarificationQuestion:
+                        meal.clarificationQuestion,
 
-                eatenAt:
-                    meal.eatenAt.toISOString(),
+                    eatenAt:
+                        meal.eatenAt.toISOString(),
 
-                createdAt:
-                    meal.createdAt.toISOString(),
-            }))
+                    createdAt:
+                        meal.createdAt.toISOString(),
+                })
+            )
         );
     } catch (error) {
         console.error(
@@ -77,6 +111,23 @@ export async function POST(
     request: NextRequest
 ) {
     try {
+        const {
+            userId,
+        } =
+            await auth();
+
+        if (!userId) {
+            return Response.json(
+                {
+                    error:
+                        "Unauthorized.",
+                },
+                {
+                    status: 401,
+                }
+            );
+        }
+
         let body: unknown;
 
         try {
@@ -95,7 +146,9 @@ export async function POST(
         }
 
         const parsed =
-            MealSchema.safeParse(body);
+            MealSchema.safeParse(
+                body
+            );
 
         if (!parsed.success) {
             return Response.json(
@@ -115,6 +168,8 @@ export async function POST(
         const meal =
             await db.meal.create({
                 data: {
+                    userId,
+
                     title:
                         parsed.data.title,
 
@@ -146,7 +201,8 @@ export async function POST(
 
         return Response.json(
             {
-                id: meal.id,
+                id:
+                    meal.id,
 
                 title:
                     meal.title,

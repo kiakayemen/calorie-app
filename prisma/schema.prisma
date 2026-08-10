@@ -9,6 +9,9 @@ datasource db {
 
 model Meal {
     id                    String   @id @default(cuid())
+
+    userId                String?
+
     title                 String
     description           String
 
@@ -22,15 +25,19 @@ model Meal {
     needsClarification    Boolean  @default(false)
     clarificationQuestion String?
 
-    eatenAt                DateTime @default(now())
-    createdAt              DateTime @default(now())
-    updatedAt              DateTime @updatedAt
+    eatenAt               DateTime @default(now())
+    createdAt             DateTime @default(now())
+    updatedAt             DateTime @updatedAt
 
-    @@index([eatenAt])
+    @@index([userId])
+    @@index([userId, eatenAt])
 }
 
 model Settings {
-    id                 String   @id @default("default")
+    id                 String   @id @default(cuid())
+
+    userId             String?  @unique
+
     calorieGoal        Int      @default(2200)
     notificationHour   Int      @default(21)
     notificationMinute Int      @default(0)
@@ -43,16 +50,26 @@ model Settings {
 model PushSubscription {
     id        String   @id @default(cuid())
 
+    userId    String?
+
     endpoint  String   @unique
     p256dh    String
     auth      String
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@index([userId])
 }
 
 model DailySummaryDelivery {
     id        String   @id @default(cuid())
-    dateKey   String   @unique
+
+    userId    String?
+    dateKey   String
+
     sentAt    DateTime @default(now())
+
+    @@unique([userId, dateKey])
+    @@index([userId])
 }

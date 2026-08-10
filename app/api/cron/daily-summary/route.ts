@@ -21,6 +21,7 @@ export const dynamic =
     "force-dynamic";
 
 const SEND_WINDOW_MINUTES = 5;
+const SYSTEM_USER_ID = "global";
 
 export async function GET(
     request: NextRequest
@@ -127,7 +128,11 @@ export async function GET(
             await db.dailySummaryDelivery.findUnique(
                 {
                     where: {
-                        dateKey,
+                        userId_dateKey: {
+                            userId:
+                                SYSTEM_USER_ID,
+                            dateKey,
+                        },
                     },
                 }
             );
@@ -261,6 +266,8 @@ export async function GET(
             await db.dailySummaryDelivery.create(
                 {
                     data: {
+                        userId:
+                            SYSTEM_USER_ID,
                         dateKey,
                     },
                 }

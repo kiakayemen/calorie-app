@@ -1,20 +1,43 @@
-import { NextRequest } from "next/server";
+import {
+    NextRequest,
+} from "next/server";
+
+import {
+    auth,
+} from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime =
+    "nodejs";
 
 export async function POST(
     request: NextRequest
 ) {
     try {
+        const {
+            userId,
+        } =
+            await auth();
+
+        if (!userId) {
+            return Response.json(
+                {
+                    error:
+                        "Unauthorized.",
+                },
+                {
+                    status: 401,
+                }
+            );
+        }
+
         const body =
             await request.json();
 
         const endpoint =
             typeof body.endpoint ===
-            "string"
+                "string"
                 ? body.endpoint
                 : "";
 
@@ -34,6 +57,7 @@ export async function POST(
             {
                 where: {
                     endpoint,
+                    userId,
                 },
             }
         );
@@ -43,7 +67,7 @@ export async function POST(
         });
     } catch (error) {
         console.error(
-            "POST /api/push/unsubscribe failed:",
+            "Push unsubscribe failed:",
             error
         );
 

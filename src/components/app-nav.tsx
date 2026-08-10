@@ -8,6 +8,10 @@ import {
     Utensils,
 } from "lucide-react";
 
+import {
+    UserButton,
+} from "@clerk/nextjs";
+
 type Props = {
     active:
         | "today"
@@ -19,7 +23,7 @@ export function AppNav({
     active,
 }: Props) {
     return (
-        <nav className="grid grid-cols-3">
+        <nav className="grid grid-cols-4">
             <NavItem
                 href="/"
                 label="Today"
@@ -58,6 +62,8 @@ export function AppNav({
                     />
                 }
             />
+
+            <AccountItem />
         </nav>
     );
 }
@@ -86,5 +92,24 @@ function NavItem({
 
             {label}
         </Link>
+    );
+}
+
+function AccountItem() {
+    return (
+        <div className="flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] text-neutral-500">
+            <UserButton
+                appearance={{
+                    elements: {
+                        avatarBox:
+                            "size-[17px]",
+                    },
+                }}
+            />
+
+            <span>
+                Account
+            </span>
+        </div>
     );
 }

@@ -1,28 +1,57 @@
-import { NextRequest } from "next/server";
+import {
+    NextRequest,
+} from "next/server";
+
+import {
+    auth,
+} from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime =
+    "nodejs";
 
-async function getSettings() {
-    return db.settings.upsert({
-        where: {
-            id: "default",
-        },
+export const dynamic =
+    "force-dynamic";
 
-        update: {},
+async function requireUserId() {
+    const {
+        userId,
+    } =
+        await auth();
 
-        create: {
-            id: "default",
-        },
-    });
+    return userId;
 }
 
 export async function GET() {
     try {
+        const userId =
+            await requireUserId();
+
+        if (!userId) {
+            return Response.json(
+                {
+                    error:
+                        "Unauthorized.",
+                },
+                {
+                    status: 401,
+                }
+            );
+        }
+
         const settings =
-            await getSettings();
+            await db.settings.upsert({
+                where: {
+                    userId,
+                },
+
+                update: {},
+
+                create: {
+                    userId,
+                },
+            });
 
         return Response.json({
             calorieGoal:
@@ -59,11 +88,28 @@ export async function PUT(
     request: NextRequest
 ) {
     try {
+        const userId =
+            await requireUserId();
+
+        if (!userId) {
+            return Response.json(
+                {
+                    error:
+                        "Unauthorized.",
+                },
+                {
+                    status: 401,
+                }
+            );
+        }
+
         const body =
             await request.json();
 
         const calorieGoal =
-            Number(body.calorieGoal);
+            Number(
+                body.calorieGoal
+            );
 
         const notificationHour =
             Number(
@@ -77,7 +123,7 @@ export async function PUT(
 
         const timezone =
             typeof body.timezone ===
-            "string"
+                "string"
                 ? body.timezone.trim()
                 : "";
 
@@ -150,7 +196,7 @@ export async function PUT(
         const settings =
             await db.settings.upsert({
                 where: {
-                    id: "default",
+                    userId,
                 },
 
                 update: {
@@ -161,7 +207,7 @@ export async function PUT(
                 },
 
                 create: {
-                    id: "default",
+                    userId,
                     calorieGoal,
                     notificationHour,
                     notificationMinute,

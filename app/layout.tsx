@@ -3,6 +3,10 @@ import type {
     Viewport,
 } from "next";
 
+import {
+    ClerkProvider,
+} from "@clerk/nextjs";
+
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 import "./globals.css";
@@ -13,12 +17,14 @@ export const metadata: Metadata = {
     description:
         "A stupidly simple AI-powered calorie tracker.",
 
-    applicationName: "Calorie",
+    applicationName:
+        "Calorie",
 
     appleWebApp: {
         capable: true,
         title: "Calorie",
-        statusBarStyle: "black-translucent",
+        statusBarStyle:
+            "black-translucent",
     },
 
     icons: {
@@ -37,17 +43,20 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
-            <head>
-                <meta
-                    name="darkreader-lock"
-                />
-            </head>
+        <ClerkProvider>
+            <html lang="en">
+                <head>
+                    <meta
+                        name="darkreader-lock"
+                    />
+                </head>
 
-            <body>
-              <ServiceWorkerRegister />
-              {children}
-            </body>
-        </html>
+                <body>
+                    <ServiceWorkerRegister />
+
+                    {children}
+                </body>
+            </html>
+        </ClerkProvider>
     );
 }

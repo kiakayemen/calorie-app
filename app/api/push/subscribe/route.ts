@@ -1,9 +1,15 @@
-import { NextRequest } from "next/server";
+import {
+    NextRequest,
+} from "next/server";
+
+import {
+    auth,
+} from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime =
+    "nodejs";
 
 type SubscriptionPayload = {
     endpoint?: string;
@@ -18,6 +24,23 @@ export async function POST(
     request: NextRequest
 ) {
     try {
+        const {
+            userId,
+        } =
+            await auth();
+
+        if (!userId) {
+            return Response.json(
+                {
+                    error:
+                        "Unauthorized.",
+                },
+                {
+                    status: 401,
+                }
+            );
+        }
+
         const body =
             (await request.json()) as SubscriptionPayload;
 
@@ -27,13 +50,13 @@ export async function POST(
         const p256dh =
             body.keys?.p256dh;
 
-        const auth =
+        const authKey =
             body.keys?.auth;
 
         if (
             !endpoint ||
             !p256dh ||
-            !auth
+            !authKey
         ) {
             return Response.json(
                 {
@@ -53,14 +76,18 @@ export async function POST(
                 },
 
                 update: {
+                    userId,
                     p256dh,
-                    auth,
+                    auth:
+                        authKey,
                 },
 
                 create: {
+                    userId,
                     endpoint,
                     p256dh,
-                    auth,
+                    auth:
+                        authKey,
                 },
             }
         );
@@ -70,7 +97,7 @@ export async function POST(
         });
     } catch (error) {
         console.error(
-            "POST /api/push/subscribe failed:",
+            "Push subscribe failed:",
             error
         );
 
