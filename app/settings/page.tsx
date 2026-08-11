@@ -2,10 +2,10 @@
 
 import {
     FormEvent,
-    useEffect,
     useState,
 } from "react";
 
+import { useAppData } from "@/components/app-data-provider";
 import { PushSettings } from "@/components/settings/push-settings";
 
 import {
@@ -16,23 +16,15 @@ import {
 import { AppNav } from "@/components/app-nav";
 
 import { readJsonResponse } from "@/lib/http";
-
 import type { AppSettings } from "@/lib/settings";
 
 export default function SettingsPage() {
-    const [settings, setSettings] =
-        useState<AppSettings>({
-            calorieGoal: 2200,
-            notificationHour: 21,
-            notificationMinute: 0,
-            timezone:
-                Intl.DateTimeFormat()
-                    .resolvedOptions()
-                    .timeZone,
-        });
-
-    const [loading, setLoading] =
-        useState(true);
+    const {
+        settings,
+        settingsLoaded,
+        settingsError,
+        setSettings,
+    } = useAppData();
 
     const [saving, setSaving] =
         useState(false);
@@ -44,57 +36,6 @@ export default function SettingsPage() {
         useState<string | null>(
             null
         );
-
-    useEffect(() => {
-        async function loadSettings() {
-            try {
-                const response =
-                    await fetch(
-                        "/api/settings",
-                        {
-                            cache:
-                                "no-store",
-                        }
-                    );
-
-                const data =
-                    await readJsonResponse<
-                        AppSettings | {
-                            error: string;
-                        }
-                    >(response);
-
-                if (!response.ok) {
-                    throw new Error(
-                        "error" in data
-                            ? data.error
-                            : "Couldn't load settings."
-                    );
-                }
-
-                if (
-                    "error" in data
-                ) {
-                    throw new Error(
-                        data.error
-                    );
-                }
-
-                setSettings(data);
-            } catch (error) {
-                setError(
-                    error instanceof
-                    Error
-                        ? error.message
-                        : "Something went wrong."
-                );
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        void loadSettings();
-    }, []);
 
     async function handleSubmit(
         event: FormEvent
@@ -183,7 +124,7 @@ export default function SettingsPage() {
                 </header>
 
                 <section className="flex-1 border-t border-neutral-800 px-5 pb-28 pt-7">
-                    {loading ? (
+                    {!settingsLoaded ? (
                         <p className="text-sm text-neutral-500">
                             Loading...
                         </p>
@@ -353,11 +294,11 @@ export default function SettingsPage() {
                                 </button>
                             </Field>
 
-                            {error && (
+                            {(error ||
+                                settingsError) && (
                                 <p className="text-sm text-red-400">
-                                    {
-                                        error
-                                    }
+                                    {error ??
+                                        settingsError}
                                 </p>
                             )}
                             <div className="border-t border-neutral-800 pt-7">

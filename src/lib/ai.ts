@@ -2,7 +2,6 @@ import {
     MealSchema,
     type MealNutrition,
 } from "@/lib/nutrition";
-import { trace } from "console";
 
 const OPENROUTER_URL =
     "https://openrouter.ai/api/v1/chat/completions";
@@ -286,8 +285,7 @@ function cleanJsonResponse(
 }
 
 export async function parseMealWithAI(
-    text: string,
-    userId: string
+    text: string
 ): Promise<MealNutrition> {
     const data =
         await requestOpenRouter(text);

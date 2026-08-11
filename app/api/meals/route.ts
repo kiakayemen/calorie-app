@@ -89,7 +89,7 @@ export async function GET() {
         );
     } catch (error) {
         console.error(
-            "GET /api/meals/parse failed:",
+            "GET /api/meals failed:",
             error
         );
 

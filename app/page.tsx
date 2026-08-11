@@ -1,18 +1,13 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
-  useState,
 } from "react";
 
 import { AppNav } from "@/components/app-nav";
+import { useAppData } from "@/components/app-data-provider";
 
 import { TodaySkeleton } from "@/components/skeletons/today-skeleton";
-
-import type { AppSettings } from "@/lib/settings";
-
-import { readJsonResponse } from "@/lib/http";
 
 import {
   Utensils,
@@ -21,170 +16,26 @@ import {
 import { MealCard } from "@/components/meal-card";
 import { MealInput } from "@/components/meal-input";
 
-import type { LoggedMeal } from "@/lib/nutrition";
+const dateFormatter =
+  new Intl.DateTimeFormat(
+    undefined,
+    {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }
+  );
 
 export default function Home() {
-  const [meals, setMeals] =
-    useState<LoggedMeal[]>([]);
-
-  const [hydrated, setHydrated] =
-    useState(false);
-  
-  const [loaded, setLoaded] =
-    useState(false);
-  
-  const [settings, setSettings] =
-    useState<AppSettings>({
-        calorieGoal: 2200,
-        notificationHour: 21,
-        notificationMinute: 0,
-        timezone:
-            Intl.DateTimeFormat()
-                .resolvedOptions()
-                .timeZone,
-    });
-
-  // useEffect(() => {
-  //     async function loadMeals() {
-  //         try {
-  //             const response = await fetch(
-  //                 "/api/meals",
-  //                 {
-  //                     cache: "no-store",
-  //                 }
-  //             );
-
-  //             const data = await readJsonResponse<
-  //                 LoggedMeal[] | {
-  //                     error: string;
-  //                 }
-  //             >(response);
-
-  //             if (!response.ok) {
-  //                 throw new Error(
-  //                     "error" in data
-  //                         ? data.error
-  //                         : "Couldn't load meals."
-  //                 );
-  //             }
-
-  //             if (!Array.isArray(data)) {
-  //                 throw new Error(
-  //                     "Invalid meals response."
-  //                 );
-  //             }
-
-  //             setMeals(data);
-  //         } catch (error) {
-  //             console.error(
-  //                 "Failed to load meals:",
-  //                 error
-  //             );
-  //         } finally {
-  //             setLoaded(true);
-  //         }
-  //     }
-
-  //     void loadMeals();
-  // }, []);
-
-  useEffect(() => {
-    async function loadData() {
-        try {
-            const [
-                mealsResponse,
-                settingsResponse,
-            ] =
-                await Promise.all([
-                    fetch(
-                        "/api/meals",
-                        {
-                            cache:
-                                "no-store",
-                        }
-                    ),
-
-                    fetch(
-                        "/api/settings",
-                        {
-                            cache:
-                                "no-store",
-                        }
-                    ),
-                ]);
-
-            const mealsData =
-                await readJsonResponse<
-                    LoggedMeal[] | {
-                        error: string;
-                    }
-                >(
-                    mealsResponse
-                );
-
-            const settingsData =
-                await readJsonResponse<
-                    AppSettings | {
-                        error: string;
-                    }
-                >(
-                    settingsResponse
-                );
-
-            if (
-                !mealsResponse.ok
-            ) {
-                throw new Error(
-                    "error" in
-                    mealsData
-                        ? mealsData.error
-                        : "Couldn't load meals."
-                );
-            }
-
-            if (
-                !settingsResponse.ok
-            ) {
-                throw new Error(
-                    "error" in
-                    settingsData
-                        ? settingsData.error
-                        : "Couldn't load settings."
-                );
-            }
-
-            if (
-                Array.isArray(
-                    mealsData
-                )
-            ) {
-                setMeals(
-                    mealsData
-                );
-            }
-
-            if (
-                !(
-                    "error" in
-                    settingsData
-                )
-            ) {
-                setSettings(
-                    settingsData
-                );
-            }
-        } catch (error) {
-            console.error(
-                "Failed to load app data:",
-                error
-            );
-        } finally {
-            setLoaded(true);
-        }
-    }
-
-    void loadData();
-}, []);
+  const {
+    meals,
+    mealsLoaded,
+    settings,
+    settingsLoaded,
+    addMeal,
+    deleteMeal:
+      deleteMealFromStore,
+  } = useAppData();
 
   const todaysMeals =
     useMemo(() => {
@@ -195,7 +46,7 @@ export default function Home() {
         (meal) => {
           return (
             new Date(
-              meal.createdAt
+              meal.eatenAt
             ).toDateString() ===
             today
           );
@@ -238,65 +89,28 @@ export default function Home() {
       1
     ) * 100;
 
-  const date =
-    new Intl.DateTimeFormat(
-      undefined,
-      {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      }
-    ).format(new Date());
-
-  function addMeal(
-    meal: LoggedMeal
-  ) {
-    setMeals((current) => [
-      ...current,
-      meal,
-    ]);
-  }
+  const date = dateFormatter.format(
+    new Date()
+  );
 
   async function deleteMeal(
       id: string
   ) {
-      const previousMeals =
-          meals;
-
-      setMeals((current) =>
-          current.filter(
-              (meal) =>
-                  meal.id !== id
-          )
-      );
-
       try {
-          const response =
-              await fetch(
-                  `/api/meals/${id}`,
-                  {
-                      method:
-                          "DELETE",
-                  }
-              );
-
-          if (!response.ok) {
-              throw new Error(
-                  "Delete failed."
-              );
-          }
+          await deleteMealFromStore(
+            id
+          );
       } catch (error) {
           console.error(
               error
           );
-
-          setMeals(
-              previousMeals
-          );
       }
   }
 
-  if (!loaded) {
+  if (
+    !mealsLoaded ||
+    !settingsLoaded
+  ) {
       return <TodaySkeleton />;
   }
 
@@ -366,16 +180,12 @@ export default function Home() {
             </span>
           </div>
 
-          {hydrated &&
-            todaysMeals.length ===
+          {todaysMeals.length ===
               0 && (
               <EmptyState />
             )}
 
-          {todaysMeals
-            .slice()
-            .reverse()
-            .map((meal) => (
+          {todaysMeals.map((meal) => (
               <MealCard
                 key={meal.id}
                 meal={meal}

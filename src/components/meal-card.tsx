@@ -12,20 +12,22 @@ type Props = {
   ) => void;
 };
 
+const timeFormatter =
+  new Intl.DateTimeFormat(
+    undefined,
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
+
 export function MealCard({
   meal,
   onDelete,
 }: Props) {
-  const time =
-    new Intl.DateTimeFormat(
-      undefined,
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    ).format(
-      new Date(meal.createdAt)
-    );
+  const time = timeFormatter.format(
+    new Date(meal.eatenAt)
+  );
 
   return (
     <article className="border-b border-neutral-800 py-5">

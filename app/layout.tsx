@@ -8,6 +8,7 @@ import {
 } from "@clerk/nextjs";
 
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { AppDataProvider } from "@/components/app-data-provider";
 
 import "./globals.css";
 
@@ -54,7 +55,9 @@ export default function RootLayout({
                 <body>
                     <ServiceWorkerRegister />
 
-                    {children}
+                    <AppDataProvider>
+                        {children}
+                    </AppDataProvider>
                 </body>
             </html>
         </ClerkProvider>

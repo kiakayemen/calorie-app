@@ -1,16 +1,24 @@
 "use client";
 
 import {
-    useEffect,
     useMemo,
     useState,
 } from "react";
 
 import { AppNav } from "@/components/app-nav";
-
-import { readJsonResponse } from "@/lib/http";
+import { useAppData } from "@/components/app-data-provider";
 
 import type { LoggedMeal } from "@/lib/nutrition";
+
+const dayFormatter =
+    new Intl.DateTimeFormat(
+        undefined,
+        {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+        }
+    );
 
 type DayGroup = {
     date: string;
@@ -23,62 +31,10 @@ type DayGroup = {
 };
 
 export default function HistoryPage() {
-    const [meals, setMeals] =
-        useState<LoggedMeal[]>([]);
-
-    const [loading, setLoading] =
-        useState(true);
-
-    useEffect(() => {
-        async function loadMeals() {
-            try {
-                const response =
-                    await fetch(
-                        "/api/meals",
-                        {
-                            cache:
-                                "no-store",
-                        }
-                    );
-
-                const data =
-                    await readJsonResponse<
-                        LoggedMeal[] | {
-                            error: string;
-                        }
-                    >(response);
-
-                if (!response.ok) {
-                    throw new Error(
-                        "error" in data
-                            ? data.error
-                            : "Couldn't load history."
-                    );
-                }
-
-                if (
-                    !Array.isArray(
-                        data
-                    )
-                ) {
-                    throw new Error(
-                        "Invalid history response."
-                    );
-                }
-
-                setMeals(data);
-            } catch (error) {
-                console.error(
-                    "Failed to load history:",
-                    error
-                );
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        void loadMeals();
-    }, []);
+    const {
+        meals,
+        mealsLoaded,
+    } = useAppData();
 
     const days =
         useMemo(() => {
@@ -144,19 +100,7 @@ export default function HistoryPage() {
                         date: key,
 
                         label:
-                            new Intl.DateTimeFormat(
-                                undefined,
-                                {
-                                    weekday:
-                                        "long",
-
-                                    month:
-                                        "short",
-
-                                    day:
-                                        "numeric",
-                                }
-                            ).format(
+                            dayFormatter.format(
                                 date
                             ),
 
@@ -201,7 +145,7 @@ export default function HistoryPage() {
                 </header>
 
                 <section className="flex-1 border-t border-neutral-800 px-5 pb-28 pt-6">
-                    {loading ? (
+                    {!mealsLoaded ? (
                         <p className="text-sm text-neutral-500">
                             Loading...
                         </p>

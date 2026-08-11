@@ -77,9 +77,8 @@ function loadDraft(): DraftState {
 export function MealInput({
     onMealAdded,
 }: Props) {
-    const [text, setText] = useState(
-        () => loadDraft().text
-    );
+    const [text, setText] =
+        useState("");
 
     const [loading, setLoading] =
         useState(false);
@@ -90,11 +89,34 @@ export function MealInput({
     const [
         clarification,
         setClarification,
-    ] = useState<Clarification | null>(
-        () => loadDraft().clarification
-    );
+    ] = useState<Clarification | null>(null);
+
+    const [draftLoaded, setDraftLoaded] =
+        useState(false);
 
     useEffect(() => {
+        const draft = loadDraft();
+
+        const timeoutId =
+            window.setTimeout(() => {
+                setText(draft.text);
+                setClarification(
+                    draft.clarification
+                );
+                setDraftLoaded(true);
+            }, 0);
+
+        return () =>
+            window.clearTimeout(
+                timeoutId
+            );
+    }, []);
+
+    useEffect(() => {
+        if (!draftLoaded) {
+            return;
+        }
+
         try {
             const draft: DraftState =
                 {
@@ -121,7 +143,7 @@ export function MealInput({
         } catch {
             // Ignore storage failures.
         }
-    }, [text, clarification]);
+    }, [text, clarification, draftLoaded]);
 
     async function saveMeal(
         meal: MealNutrition
@@ -163,6 +185,14 @@ export function MealInput({
         }
 
         onMealAdded(data);
+
+        try {
+            window.sessionStorage.removeItem(
+                DRAFT_STORAGE_KEY
+            );
+        } catch {
+            // Ignore storage failures.
+        }
     }
 
     async function parseMeal(
