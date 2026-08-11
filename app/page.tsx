@@ -89,6 +89,9 @@ export default function Home() {
         settings.calorieGoal,
       1
     ) * 100;
+  const isOverGoal =
+    totals.calories >
+    settings.calorieGoal;
 
   const date = dateFormatter.format(
     new Date()
@@ -130,22 +133,44 @@ export default function Home() {
 
         <section className="flex-1 border-t border-neutral-800 bg-neutral-950 px-5 pb-44 pt-6">
           <div className="flex items-end gap-2">
-            <span className="text-5xl font-semibold tracking-[-0.05em] tabular-nums">
+            <span
+              className={`text-5xl font-semibold tracking-[-0.05em] tabular-nums ${
+                isOverGoal
+                  ? "text-red-400"
+                  : ""
+              }`}
+            >
               {Math.round(
                 totals.calories
               ).toLocaleString()}
             </span>
 
-            <span className="pb-1.5 text-sm text-neutral-400">
+            <span
+              className={`pb-1.5 text-sm ${
+                isOverGoal
+                  ? "text-red-400"
+                  : "text-neutral-400"
+              }`}
+            >
               /{" "}
               {settings.calorieGoal.toLocaleString()}{" "}
               kcal
             </span>
           </div>
 
-          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-neutral-800">
+          <div
+            className={`mt-6 h-1.5 overflow-hidden rounded-full ${
+              isOverGoal
+                ? "bg-red-950/80"
+                : "bg-neutral-800"
+            }`}
+          >
             <div
-              className="h-full rounded-full bg-neutral-100 transition-[width] duration-500"
+              className={`h-full rounded-full transition-[width] duration-500 ${
+                isOverGoal
+                  ? "bg-red-500"
+                  : "bg-neutral-100"
+              }`}
               style={{
                 width: `${progress}%`,
               }}
