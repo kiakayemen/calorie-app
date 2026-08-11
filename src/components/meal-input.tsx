@@ -2,6 +2,7 @@
 
 import {
     FormEvent,
+    useEffect,
     useState,
 } from "react";
 
@@ -28,11 +29,57 @@ type Clarification = {
     question: string;
 };
 
+type DraftState = {
+    text: string;
+    clarification: Clarification | null;
+};
+
+const DRAFT_STORAGE_KEY =
+    "calorie.meal-input.draft";
+
+function loadDraft(): DraftState {
+    try {
+        const raw =
+            window.sessionStorage.getItem(
+                DRAFT_STORAGE_KEY
+            );
+
+        if (!raw) {
+            return {
+                text: "",
+                clarification: null,
+            };
+        }
+
+        const draft =
+            JSON.parse(
+                raw
+            ) as Partial<DraftState>;
+
+        return {
+            text:
+                typeof draft.text ===
+                "string"
+                    ? draft.text
+                    : "",
+            clarification:
+                draft.clarification ??
+                null,
+        };
+    } catch {
+        return {
+            text: "",
+            clarification: null,
+        };
+    }
+}
+
 export function MealInput({
     onMealAdded,
 }: Props) {
-    const [text, setText] =
-        useState("");
+    const [text, setText] = useState(
+        () => loadDraft().text
+    );
 
     const [loading, setLoading] =
         useState(false);
@@ -43,10 +90,38 @@ export function MealInput({
     const [
         clarification,
         setClarification,
-    ] =
-        useState<Clarification | null>(
-            null
-        );
+    ] = useState<Clarification | null>(
+        () => loadDraft().clarification
+    );
+
+    useEffect(() => {
+        try {
+            const draft: DraftState =
+                {
+                    text,
+                    clarification,
+                };
+
+            if (
+                !draft.text &&
+                !draft.clarification
+            ) {
+                window.sessionStorage.removeItem(
+                    DRAFT_STORAGE_KEY
+                );
+                return;
+            }
+
+            window.sessionStorage.setItem(
+                DRAFT_STORAGE_KEY,
+                JSON.stringify(
+                    draft
+                )
+            );
+        } catch {
+            // Ignore storage failures.
+        }
+    }, [text, clarification]);
 
     async function saveMeal(
         meal: MealNutrition
