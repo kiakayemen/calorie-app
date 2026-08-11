@@ -149,7 +149,10 @@ export function MealInput({
     }, [text, clarification, draftLoaded]);
 
     async function saveMeal(
-        meal: MealNutrition
+        meal: MealNutrition & {
+            model?: string;
+        },
+        sourcePrompt: string
     ) {
         const response = await fetch(
             "/api/meals",
@@ -161,9 +164,13 @@ export function MealInput({
                         "application/json",
                 },
 
-                body: JSON.stringify(
-                    meal
-                ),
+                body: JSON.stringify({
+                    ...meal,
+                    sourcePrompt,
+                    model:
+                        meal.model ||
+                        "unknown",
+                }),
             }
         );
 
@@ -263,7 +270,7 @@ export function MealInput({
                 return;
             }
 
-            await saveMeal(meal);
+            await saveMeal(meal, value);
 
             setClarification(null);
             setText("");

@@ -22,6 +22,9 @@ model Meal {
 
     confidence            Float
 
+    sourcePrompt          String?
+    model                 String?
+
     needsClarification    Boolean  @default(false)
     clarificationQuestion String?
 
@@ -29,8 +32,28 @@ model Meal {
     createdAt             DateTime @default(now())
     updatedAt             DateTime @updatedAt
 
+    messages              MealMessage[]
+
     @@index([userId])
     @@index([userId, eatenAt])
+}
+
+model MealMessage {
+    id        String            @id @default(cuid())
+    mealId    String
+    role      ConversationRole
+    content   String
+    model     String?
+    createdAt DateTime          @default(now())
+
+    meal      Meal              @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+    @@index([mealId, createdAt])
+}
+
+enum ConversationRole {
+    USER
+    ASSISTANT
 }
 
 model Settings {

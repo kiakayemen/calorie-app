@@ -23,4 +23,5 @@ export type LoggedMeal = MealNutrition & {
     id: string;
     createdAt: string;
     eatenAt: string;
+    model?: string | null;
 };

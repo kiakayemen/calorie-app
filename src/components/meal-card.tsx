@@ -1,6 +1,14 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import {
+  ArrowUp,
+  Loader2,
+  Trash2,
+} from "lucide-react";
+
+import { useState } from "react";
+
+import { readJsonResponse } from "@/lib/http";
 
 import type { LoggedMeal } from "@/lib/nutrition";
 
@@ -9,6 +17,10 @@ type Props = {
 
   onDelete: (
     id: string
+  ) => void;
+
+  onMealUpdated: (
+    meal: LoggedMeal
   ) => void;
 };
 
@@ -24,10 +36,72 @@ const timeFormatter =
 export function MealCard({
   meal,
   onDelete,
+  onMealUpdated,
 }: Props) {
+  const [message, setMessage] =
+    useState("");
+  const [loading, setLoading] =
+    useState(false);
+  const [error, setError] =
+    useState<string | null>(null);
+
   const time = timeFormatter.format(
     new Date(meal.eatenAt)
   );
+
+  async function continueConversation(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    const value = message.trim();
+
+    if (!value || loading) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/meals/${meal.id}/conversation`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: value,
+          }),
+        }
+      );
+
+      const data =
+        await readJsonResponse<
+          LoggedMeal | { error: string }
+        >(response);
+
+      if (!response.ok || "error" in data) {
+        throw new Error(
+          "error" in data
+            ? data.error
+            : "Couldn't update this meal."
+        );
+      }
+
+      onMealUpdated(data);
+      setMessage("");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Couldn't update this meal."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <article className="border-b border-neutral-800 py-5">
@@ -88,6 +162,44 @@ export function MealCard({
           </button>
         </div>
       </div>
+
+      <form
+        onSubmit={continueConversation}
+        className="mt-4 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 p-1.5"
+      >
+        <input
+          value={message}
+          onChange={(event) =>
+            setMessage(event.target.value)
+          }
+          disabled={loading}
+          placeholder="Ask AI to change this meal..."
+          className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-600"
+          aria-label={`Continue conversation about ${meal.title}`}
+        />
+
+        <button
+          type="submit"
+          disabled={loading || !message.trim()}
+          aria-label="Update meal with AI"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-600"
+        >
+          {loading ? (
+            <Loader2
+              size={15}
+              className="animate-spin"
+            />
+          ) : (
+            <ArrowUp size={15} />
+          )}
+        </button>
+      </form>
+
+      {error && (
+        <p className="mt-2 text-xs text-red-400">
+          {error}
+        </p>
+      )}
     </article>
   );
 }

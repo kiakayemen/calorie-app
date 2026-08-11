@@ -32,6 +32,7 @@ type AppDataContextValue = {
     settingsLoaded: boolean;
     settingsError: string | null;
     addMeal: (meal: LoggedMeal) => void;
+    updateMeal: (meal: LoggedMeal) => void;
     deleteMeal: (id: string) => Promise<void>;
     setSettings: React.Dispatch<
         React.SetStateAction<AppSettings>
@@ -227,6 +228,18 @@ export function AppDataProvider({
         setMealsLoaded(true);
     }
 
+    function updateMeal(meal: LoggedMeal) {
+        mealsVersion.current += 1;
+        setMeals((current) =>
+            current.map((item) =>
+                item.id === meal.id
+                    ? meal
+                    : item
+            )
+        );
+        mealsLoadedAt.current = Date.now();
+    }
+
     async function deleteMeal(id: string) {
         const removedIndex = meals.findIndex(
             (meal) => meal.id === id
@@ -297,6 +310,7 @@ export function AppDataProvider({
                 settingsLoaded,
                 settingsError,
                 addMeal,
+                updateMeal,
                 deleteMeal,
                 setSettings,
             }}

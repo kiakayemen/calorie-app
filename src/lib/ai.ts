@@ -7,7 +7,10 @@ const OPENROUTER_URL =
     "https://openrouter.ai/api/v1/chat/completions";
 
 const DEFAULT_MODEL =
-    "nvidia/nemotron-3-ultra-550b-a55b:free";
+    "openrouter/free";
+
+const DEFAULT_CONVERSATION_MODEL =
+    "openrouter/free";
 
 const SYSTEM_PROMPT = `
 You are the nutrition estimation engine for a calorie tracking application.
@@ -117,6 +120,11 @@ type OpenRouterResponse = {
     };
 };
 
+export type MealConversationMessage = {
+    role: "user" | "assistant";
+    content: string;
+};
+
 export type ParsedMeal = MealNutrition & {
     model: string;
 };
@@ -139,14 +147,11 @@ export class AIError extends Error {
 }
 
 async function requestOpenRouter(
-    text: string
+    messages: OpenRouterMessage[],
+    model: string
 ): Promise<OpenRouterResponse> {
     const apiKey =
         process.env.OPENROUTER_API_KEY;
-
-    const model =
-        process.env.OPENROUTER_MODEL ||
-        DEFAULT_MODEL;
 
     if (!apiKey) {
         throw new AIError(
@@ -174,16 +179,7 @@ async function requestOpenRouter(
             body: JSON.stringify({
                 model,
 
-                messages: [
-                    {
-                        role: "system",
-                        content: SYSTEM_PROMPT,
-                    },
-                    {
-                        role: "user",
-                        content: text,
-                    },
-                ],
+                messages,
 
                 response_format: {
                     type: "json_object",
@@ -291,8 +287,47 @@ function cleanJsonResponse(
 export async function parseMealWithAI(
     text: string
 ): Promise<ParsedMeal> {
-    const data =
-        await requestOpenRouter(text);
+    const data = await requestOpenRouter([
+        {
+            role: "system",
+            content: SYSTEM_PROMPT,
+        },
+        {
+            role: "user",
+            content: text,
+        },
+    ], process.env.OPENROUTER_MODEL || DEFAULT_MODEL);
+
+    return parseMealResponse(
+        data,
+        process.env.OPENROUTER_MODEL ||
+            DEFAULT_MODEL
+    );
+}
+
+export async function continueMealWithAI(
+    messages: MealConversationMessage[]
+): Promise<ParsedMeal> {
+    const model =
+        process.env.OPENROUTER_CONVERSATION_MODEL ||
+        process.env.OPENROUTER_MODEL ||
+        DEFAULT_CONVERSATION_MODEL;
+
+    const data = await requestOpenRouter([
+        {
+            role: "system",
+            content: `${SYSTEM_PROMPT}\n\nContinuation rules:\n- Use the complete conversation history as context.\n- Treat the latest user message as an instruction to revise the existing meal.\n- Preserve details the user did not ask to change.\n- Return the complete updated meal object, not a partial patch.\n- Return JSON only.`,
+        },
+        ...messages,
+    ], model);
+
+    return parseMealResponse(data, model);
+}
+
+function parseMealResponse(
+    data: OpenRouterResponse,
+    requestedModel: string
+): ParsedMeal {
 
     const choice =
         data.choices?.[0];
@@ -351,7 +386,6 @@ export async function parseMealWithAI(
         ...parsed.data,
         model:
             data.model ||
-            process.env.OPENROUTER_MODEL ||
-            DEFAULT_MODEL,
+            requestedModel,
     };
 }

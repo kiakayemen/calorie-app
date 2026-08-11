@@ -2,12 +2,19 @@ import {
     NextRequest,
 } from "next/server";
 
+import { z } from "zod";
+
 import {
     auth,
 } from "@clerk/nextjs/server";
 
 import { db } from "@/lib/db";
 import { MealSchema } from "@/lib/nutrition";
+
+const MealCreateSchema = MealSchema.extend({
+    sourcePrompt: z.string().trim().min(1).max(2000),
+    model: z.string().trim().min(1).max(200),
+});
 
 export const runtime =
     "nodejs";
@@ -72,6 +79,9 @@ export async function GET() {
 
                     confidence:
                         meal.confidence,
+
+                    model:
+                        meal.model,
 
                     needsClarification:
                         meal.needsClarification,
@@ -146,7 +156,7 @@ export async function POST(
         }
 
         const parsed =
-            MealSchema.safeParse(
+            MealCreateSchema.safeParse(
                 body
             );
 
@@ -200,6 +210,30 @@ export async function POST(
 
                     clarificationQuestion:
                         parsed.data.clarificationQuestion,
+
+                    sourcePrompt:
+                        parsed.data.sourcePrompt,
+
+                    model:
+                        parsed.data.model,
+
+                    messages: {
+                        create: [
+                            {
+                                role: "USER",
+                                content:
+                                    parsed.data.sourcePrompt,
+                            },
+                            {
+                                role: "ASSISTANT",
+                                content: JSON.stringify(
+                                    parsed.data
+                                ),
+                                model:
+                                    parsed.data.model,
+                            },
+                        ],
+                    },
                 },
             });
 
@@ -228,6 +262,9 @@ export async function POST(
 
                 confidence:
                     meal.confidence,
+
+                model:
+                    meal.model,
 
                 needsClarification:
                     meal.needsClarification,

@@ -33,6 +33,7 @@ export default function Home() {
     settings,
     settingsLoaded,
     addMeal,
+    updateMeal,
     deleteMeal:
       deleteMealFromStore,
   } = useAppData();
@@ -191,6 +192,9 @@ export default function Home() {
                 meal={meal}
                 onDelete={
                   deleteMeal
+                }
+                onMealUpdated={
+                  updateMeal
                 }
               />
             ))}
