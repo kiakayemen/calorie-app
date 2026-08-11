@@ -117,6 +117,10 @@ type OpenRouterResponse = {
     };
 };
 
+export type ParsedMeal = MealNutrition & {
+    model: string;
+};
+
 export class AIError extends Error {
     status?: number;
     details?: unknown;
@@ -286,7 +290,7 @@ function cleanJsonResponse(
 
 export async function parseMealWithAI(
     text: string
-): Promise<MealNutrition> {
+): Promise<ParsedMeal> {
     const data =
         await requestOpenRouter(text);
 
@@ -343,5 +347,11 @@ export async function parseMealWithAI(
         );
     }
 
-    return parsed.data;
+    return {
+        ...parsed.data,
+        model:
+            data.model ||
+            process.env.OPENROUTER_MODEL ||
+            DEFAULT_MODEL,
+    };
 }

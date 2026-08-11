@@ -86,6 +86,9 @@ export function MealInput({
     const [error, setError] =
         useState<string | null>(null);
 
+    const [model, setModel] =
+        useState<string | null>(null);
+
     const [
         clarification,
         setClarification,
@@ -200,6 +203,7 @@ export function MealInput({
     ) {
         setLoading(true);
         setError(null);
+        setModel(null);
 
         try {
             const response =
@@ -234,6 +238,13 @@ export function MealInput({
 
             const meal =
                 data;
+
+            if (
+                typeof meal.model ===
+                "string"
+            ) {
+                setModel(meal.model);
+            }
 
             if (
                 meal.needsClarification &&
@@ -337,6 +348,12 @@ Do not ask the same clarification question again.
             {error && (
                 <p className="px-1 text-sm text-red-400">
                     {error}
+                </p>
+            )}
+
+            {model && (
+                <p className="px-1 text-xs text-neutral-600">
+                    Estimated by {model}
                 </p>
             )}
 
