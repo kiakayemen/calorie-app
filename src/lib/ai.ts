@@ -2,6 +2,7 @@ import {
     MealSchema,
     type MealNutrition,
 } from "@/lib/nutrition";
+import { trace } from "console";
 
 const OPENROUTER_URL =
     "https://openrouter.ai/api/v1/chat/completions";
@@ -175,7 +176,6 @@ async function requestOpenRouter(
                         role: "system",
                         content: SYSTEM_PROMPT,
                     },
-
                     {
                         role: "user",
                         content: text,
@@ -186,8 +186,12 @@ async function requestOpenRouter(
                     type: "json_object",
                 },
 
-                temperature: 0.2,
+                provider: {
+                    allow_fallbacks: true,
+                    require_parameters: true,
+                },
 
+                temperature: 0.2,
                 max_tokens: 1000,
             }),
 
@@ -217,12 +221,13 @@ async function requestOpenRouter(
         );
     }
 
-    if (!response.ok) {
+        if (!response.ok) {
         console.error(
             "OpenRouter HTTP error:",
             {
                 status: response.status,
-                data,
+                error: data.error,
+                fullResponse: data,
             }
         );
 
@@ -233,7 +238,6 @@ async function requestOpenRouter(
             data.error
         );
     }
-
     const choice =
         data.choices?.[0];
 
@@ -282,7 +286,8 @@ function cleanJsonResponse(
 }
 
 export async function parseMealWithAI(
-    text: string
+    text: string,
+    userId: string
 ): Promise<MealNutrition> {
     const data =
         await requestOpenRouter(text);

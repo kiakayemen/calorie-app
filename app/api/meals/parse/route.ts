@@ -42,7 +42,7 @@ export async function POST(
         }
 
         const meal =
-            await parseMealWithAI(text);
+            await parseMealWithAI(text, "user-id-placeholder");
 
         return Response.json(
             meal

@@ -89,7 +89,7 @@ export async function GET() {
         );
     } catch (error) {
         console.error(
-            "GET /api/meals failed:",
+            "GET /api/meals/parse failed:",
             error
         );
 
@@ -165,6 +165,10 @@ export async function POST(
             );
         }
 
+        /*
+         * Save the parsed meal under
+         * the authenticated user.
+         */
         const meal =
             await db.meal.create({
                 data: {
