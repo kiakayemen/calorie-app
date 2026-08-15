@@ -25,3 +25,36 @@ export async function readJsonResponse<T>(
         );
     }
 }
+
+export type TimedResponse = {
+    response: Response;
+    durationMs: number;
+};
+
+export async function fetchWithTiming(
+    input: RequestInfo | URL,
+    init?: RequestInit
+): Promise<TimedResponse> {
+    const startedAt =
+        typeof performance !== "undefined"
+            ? performance.now()
+            : Date.now();
+
+    const response = await fetch(
+        input,
+        init
+    );
+
+    const finishedAt =
+        typeof performance !== "undefined"
+            ? performance.now()
+            : Date.now();
+
+    return {
+        response,
+        durationMs:
+            Math.round(
+                finishedAt - startedAt
+            ),
+    };
+}

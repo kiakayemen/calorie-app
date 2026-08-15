@@ -9,7 +9,10 @@ import {
 
 import { useState } from "react";
 
-import { readJsonResponse } from "@/lib/http";
+import {
+    fetchWithTiming,
+    readJsonResponse,
+} from "@/lib/http";
 
 import type { LoggedMeal } from "@/lib/nutrition";
 
@@ -46,12 +49,12 @@ export function MealCard({
   onToggleExpand,
   onMealUpdated,
 }: Props) {
-  const [message, setMessage] =
+    const [message, setMessage] =
     useState("");
   const [loading, setLoading] =
     useState(false);
-  const [error, setError] =
-    useState<string | null>(null);
+    const [error, setError] =
+        useState<string | null>(null);
 
   const time = timeFormatter.format(
     new Date(meal.eatenAt)
@@ -72,7 +75,8 @@ export function MealCard({
     setError(null);
 
     try {
-      const response = await fetch(
+      const { response, durationMs } =
+        await fetchWithTiming(
         `/api/meals/${meal.id}/conversation`,
         {
           method: "POST",
@@ -83,6 +87,11 @@ export function MealCard({
             message: value,
           }),
         }
+      );
+      console.info(
+        "POST /api/meals/%s/conversation completed in %d ms",
+        meal.id,
+        durationMs
       );
 
       const data =
@@ -266,6 +275,7 @@ export function MealCard({
                 {error}
               </p>
             )}
+
           </div>
         </div>
       </div>

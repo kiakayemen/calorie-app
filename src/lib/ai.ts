@@ -12,6 +12,8 @@ const DEFAULT_MODEL =
 const DEFAULT_CONVERSATION_MODEL =
     "openrouter/free";
 
+const OPENROUTER_TIMEOUT_MS = 30_000;
+
 const SYSTEM_PROMPT = `
 You are the nutrition estimation engine for a calorie tracking application.
 
@@ -170,44 +172,69 @@ async function requestOpenRouter(
         );
     }
 
-    const response = await fetch(
-        OPENROUTER_URL,
-        {
-            method: "POST",
-
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-
-                "HTTP-Referer":
-                    process.env.NEXT_PUBLIC_APP_URL ||
-                    "http://localhost:3000",
-
-                "X-OpenRouter-Title":
-                    "Calorie Calculator",
-            },
-
-            body: JSON.stringify({
-                model,
-
-                messages,
-
-                response_format: {
-                    type: "json_object",
-                },
-
-                provider: {
-                    allow_fallbacks: true,
-                    require_parameters: true,
-                },
-
-                temperature: 0.2,
-                max_tokens: 1000,
-            }),
-
-            cache: "no-store",
-        }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+        () => controller.abort(),
+        OPENROUTER_TIMEOUT_MS
     );
+
+    let response: Response;
+
+    try {
+        response = await fetch(
+            OPENROUTER_URL,
+            {
+                method: "POST",
+
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    "Content-Type":
+                        "application/json",
+
+                    "HTTP-Referer":
+                        process.env.NEXT_PUBLIC_APP_URL ||
+                        "http://localhost:3000",
+
+                    "X-OpenRouter-Title":
+                        "Calorie Calculator",
+                },
+
+                body: JSON.stringify({
+                    model,
+
+                    messages,
+
+                    response_format: {
+                        type: "json_object",
+                    },
+
+                    provider: {
+                        allow_fallbacks: true,
+                        require_parameters: true,
+                    },
+
+                    temperature: 0.2,
+                    max_tokens: 1000,
+                }),
+
+                cache: "no-store",
+                signal: controller.signal,
+            }
+        );
+    } catch (error) {
+        if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+        ) {
+            throw new AIError(
+                `OpenRouter request timed out after ${OPENROUTER_TIMEOUT_MS / 1000} seconds.`
+            );
+        }
+
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 
     const rawBody =
         await response.text();
@@ -265,6 +292,17 @@ async function requestOpenRouter(
         );
     }
 
+    if (!choice?.message?.content) {
+        console.error(
+            "OpenRouter returned no message content:",
+            data
+        );
+
+        throw new AIError(
+            "OpenRouter returned no assistant content."
+        );
+    }
+
     return data;
 }
 
@@ -312,7 +350,8 @@ export async function parseMealWithAI(
     return parseMealResponse(
         data,
         process.env.OPENROUTER_MODEL ||
-            DEFAULT_MODEL
+            DEFAULT_MODEL,
+        undefined
     );
 }
 
@@ -332,12 +371,17 @@ export async function continueMealWithAI(
         ...messages,
     ], model);
 
-    return parseMealResponse(data, model);
+    return parseMealResponse(
+        data,
+        model,
+        undefined
+    );
 }
 
 function parseMealResponse(
     data: OpenRouterResponse,
-    requestedModel: string
+    requestedModel: string,
+    upstreamStatus?: number
 ): ParsedMeal {
 
     const choice =
@@ -353,7 +397,12 @@ function parseMealResponse(
         );
 
         throw new AIError(
-            "The AI returned an empty response."
+            "OpenRouter returned no assistant content.",
+            upstreamStatus,
+            {
+                choice,
+                response: data,
+            }
         );
     }
 

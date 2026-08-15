@@ -11,7 +11,10 @@ import {
     Loader2,
 } from "lucide-react";
 
-import { readJsonResponse } from "@/lib/http";
+import {
+    fetchWithTiming,
+    readJsonResponse,
+} from "@/lib/http";
 
 import type {
     LoggedMeal,
@@ -154,7 +157,8 @@ export function MealInput({
         },
         sourcePrompt: string
     ) {
-        const response = await fetch(
+        const { response, durationMs } =
+            await fetchWithTiming(
             "/api/meals",
             {
                 method: "POST",
@@ -172,6 +176,10 @@ export function MealInput({
                         "unknown",
                 }),
             }
+        );
+        console.info(
+            "POST /api/meals completed in %d ms",
+            durationMs
         );
 
         const data = await readJsonResponse<
@@ -213,8 +221,8 @@ export function MealInput({
         setModel(null);
 
         try {
-            const response =
-                await fetch(
+            const { response, durationMs } =
+                await fetchWithTiming(
                     "/api/meals/parse",
                     {
                         method: "POST",
@@ -228,10 +236,14 @@ export function MealInput({
                             JSON.stringify(
                                 {
                                     text: value,
-                                }
-                            ),
+                            }
+                        ),
                     }
                 );
+            console.info(
+                "POST /api/meals/parse completed in %d ms",
+                durationMs
+            );
 
             const data =
                 await response.json();
