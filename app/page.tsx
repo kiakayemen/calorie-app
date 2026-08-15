@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useState,
   useMemo,
 } from "react";
 
@@ -27,6 +28,9 @@ const dateFormatter =
   );
 
 export default function Home() {
+  const [expandedMealId, setExpandedMealId] =
+    useState<string | null>(null);
+
   const {
     meals,
     mealsLoaded,
@@ -215,6 +219,18 @@ export default function Home() {
               <MealCard
                 key={meal.id}
                 meal={meal}
+                expanded={
+                  expandedMealId === meal.id
+                }
+                onToggleExpand={
+                  (id) =>
+                    setExpandedMealId(
+                      (current) =>
+                        current === id
+                          ? null
+                          : id
+                    )
+                }
                 onDelete={
                   deleteMeal
                 }

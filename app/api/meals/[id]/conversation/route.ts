@@ -140,6 +140,8 @@ export async function POST(
                 clarificationQuestion:
                     result.clarificationQuestion,
                 model: result.model,
+                itemBreakdown:
+                    result.itemBreakdown,
             },
         });
 
@@ -175,6 +177,8 @@ export async function POST(
             clarificationQuestion:
                 updatedMeal.clarificationQuestion,
             model: updatedMeal.model,
+            itemBreakdown:
+                updatedMeal.itemBreakdown,
             eatenAt: updatedMeal.eatenAt.toISOString(),
             createdAt: updatedMeal.createdAt.toISOString(),
         });

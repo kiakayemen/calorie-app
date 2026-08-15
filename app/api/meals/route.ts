@@ -83,6 +83,9 @@ export async function GET() {
                     model:
                         meal.model,
 
+                    itemBreakdown:
+                        meal.itemBreakdown,
+
                     needsClarification:
                         meal.needsClarification,
 
@@ -217,6 +220,9 @@ export async function POST(
                     model:
                         parsed.data.model,
 
+                    itemBreakdown:
+                        parsed.data.itemBreakdown,
+
                     messages: {
                         create: [
                             {
@@ -265,6 +271,9 @@ export async function POST(
 
                 model:
                     meal.model,
+
+                itemBreakdown:
+                    meal.itemBreakdown,
 
                 needsClarification:
                     meal.needsClarification,

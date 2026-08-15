@@ -1,9 +1,10 @@
 "use client";
 
 import {
-  ArrowUp,
-  Loader2,
-  Trash2,
+    ArrowUp,
+    ChevronDown,
+    Loader2,
+    Trash2,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -13,14 +14,19 @@ import { readJsonResponse } from "@/lib/http";
 import type { LoggedMeal } from "@/lib/nutrition";
 
 type Props = {
-  meal: LoggedMeal;
+    meal: LoggedMeal;
+    expanded: boolean;
 
-  onDelete: (
-    id: string
-  ) => void;
+    onDelete: (
+      id: string
+    ) => void;
 
-  onMealUpdated: (
-    meal: LoggedMeal
+    onToggleExpand: (
+      id: string
+    ) => void;
+
+    onMealUpdated: (
+      meal: LoggedMeal
   ) => void;
 };
 
@@ -35,7 +41,9 @@ const timeFormatter =
 
 export function MealCard({
   meal,
+  expanded,
   onDelete,
+  onToggleExpand,
   onMealUpdated,
 }: Props) {
   const [message, setMessage] =
@@ -106,7 +114,12 @@ export function MealCard({
   return (
     <article className="border-b border-neutral-800 py-5">
       <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0">
+        <button
+          type="button"
+          onClick={() => onToggleExpand(meal.id)}
+          className="min-w-0 flex-1 text-left"
+          aria-expanded={expanded}
+        >
           <h3 className="font-medium text-neutral-100">
             {meal.title}
           </h3>
@@ -119,43 +132,49 @@ export function MealCard({
             <span>{time}</span>
 
             <span>
-              P{" "}
-              {Math.round(
-                meal.protein
-              )}
-              g
+              P {Math.round(meal.protein)}g
             </span>
 
             <span>
-              C{" "}
-              {Math.round(
-                meal.carbs
-              )}
-              g
+              C {Math.round(meal.carbs)}g
             </span>
 
             <span>
-              F{" "}
-              {Math.round(meal.fat)}
-              g
+              F {Math.round(meal.fat)}g
             </span>
           </div>
-        </div>
+        </button>
 
         <div className="flex shrink-0 items-center gap-3">
-          <span className="font-semibold tabular-nums">
-            {Math.round(
-              meal.calories
-            ).toLocaleString()}{" "}
-            kcal
-          </span>
+          <button
+            type="button"
+            onClick={() => onToggleExpand(meal.id)}
+            aria-label={
+              expanded
+                ? "Collapse meal"
+                : "Expand meal"
+            }
+            className="flex items-center gap-1.5 text-neutral-100 transition hover:text-white"
+          >
+            <span className="font-semibold tabular-nums">
+              {Math.round(meal.calories).toLocaleString()} kcal
+            </span>
+
+            <ChevronDown
+              size={16}
+              className={`text-neutral-500 transition-transform ${
+                expanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
           <button
             type="button"
             aria-label="Delete meal"
-            onClick={() =>
-              onDelete(meal.id)
-            }
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(meal.id);
+            }}
             className="text-neutral-700 transition hover:text-red-400"
           >
             <Trash2 size={16} />
@@ -163,43 +182,93 @@ export function MealCard({
         </div>
       </div>
 
-      <form
-        onSubmit={continueConversation}
-        className="mt-4 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 p-1.5"
+      <div
+        className={`grid transition-all duration-300 ${
+          expanded
+            ? "mt-4 grid-rows-[1fr] opacity-100"
+            : "grid-rows-[0fr] opacity-0"
+        }`}
       >
-        <input
-          value={message}
-          onChange={(event) =>
-            setMessage(event.target.value)
-          }
-          disabled={loading}
-          placeholder="Ask AI to change this meal..."
-          className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-600"
-          aria-label={`Continue conversation about ${meal.title}`}
-        />
+        <div className="overflow-hidden">
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
+            <div className="grid gap-3">
+              {(meal.itemBreakdown ?? []).length > 0 ? (
+                meal.itemBreakdown.map(
+                  (item, index) => (
+                    <div
+                      key={`${meal.id}-${item.name}-${index}`}
+                      className="flex items-start justify-between gap-4 border-b border-neutral-800 pb-3 last:border-b-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-100">
+                          {item.name}
+                        </p>
+                      </div>
 
-        <button
-          type="submit"
-          disabled={loading || !message.trim()}
-          aria-label="Update meal with AI"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-600"
-        >
-          {loading ? (
-            <Loader2
-              size={15}
-              className="animate-spin"
-            />
-          ) : (
-            <ArrowUp size={15} />
-          )}
-        </button>
-      </form>
+                      <div className="grid shrink-0 grid-cols-4 gap-3 text-right text-xs text-neutral-400">
+                        <span>
+                          {Math.round(item.calories)} kcal
+                        </span>
+                        <span>
+                          P {Math.round(item.protein)}g
+                        </span>
+                        <span>
+                          C {Math.round(item.carbs)}g
+                        </span>
+                        <span>
+                          F {Math.round(item.fat)}g
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )
+              ) : (
+                <p className="text-sm text-neutral-500">
+                  No item breakdown is available for this meal yet.
+                </p>
+              )}
+            </div>
 
-      {error && (
-        <p className="mt-2 text-xs text-red-400">
-          {error}
-        </p>
-      )}
+            <form
+              onSubmit={continueConversation}
+              className="mt-4 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 p-1.5"
+            >
+              <input
+                value={message}
+                onChange={(event) =>
+                  setMessage(event.target.value)
+                }
+                disabled={loading}
+                placeholder="Ask AI to change this meal..."
+                className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-600"
+                aria-label={`Continue conversation about ${meal.title}`}
+              />
+
+              <button
+                type="submit"
+                disabled={loading || !message.trim()}
+                aria-label="Update meal with AI"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-600"
+              >
+                {loading ? (
+                  <Loader2
+                    size={15}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <ArrowUp size={15} />
+                )}
+              </button>
+            </form>
+
+            {error && (
+              <p className="mt-2 text-xs text-red-400">
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
     </article>
   );
 }

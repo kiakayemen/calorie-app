@@ -24,6 +24,7 @@ model Meal {
 
     sourcePrompt          String?
     model                 String?
+    itemBreakdown         Json?
 
     needsClarification    Boolean  @default(false)
     clarificationQuestion String?

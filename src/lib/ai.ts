@@ -32,7 +32,16 @@ You MUST return exactly this structure:
     "fat": 20,
     "confidence": 0.85,
     "needsClarification": false,
-    "clarificationQuestion": null
+    "clarificationQuestion": null,
+    "itemBreakdown": [
+        {
+            "name": "3 eggs",
+            "calories": 210,
+            "protein": 18,
+            "carbs": 1,
+            "fat": 15
+        }
+    ]
 }
 
 Rules:
@@ -79,15 +88,17 @@ Examples:
 
 "clarificationQuestion" must be null.
 
-10. Keep "title" short.
+10. "itemBreakdown" must list each meaningful ingredient or item in the meal with estimated nutrition.
 
-11. "description" must only describe the food the user actually mentioned.
+11. Keep "title" short.
 
-12. Never include markdown.
+12. "description" must only describe the food the user actually mentioned.
 
-13. Never wrap the JSON in a code block.
+13. Never include markdown.
 
-14. Return JSON only.
+14. Never wrap the JSON in a code block.
+
+15. Return JSON only.
 `.trim();
 
 type OpenRouterMessage = {
