@@ -386,6 +386,7 @@ Do not ask the same clarification question again.
                     value={text}
                     rows={1}
                     disabled={loading}
+                    dir="auto"
                     placeholder={
                         clarification
                             ? "Your answer..."

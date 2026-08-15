@@ -248,6 +248,7 @@ export function MealCard({
                   setMessage(event.target.value)
                 }
                 disabled={loading}
+                dir="auto"
                 placeholder="Ask AI to change this meal..."
                 className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-600"
                 aria-label={`Continue conversation about ${meal.title}`}

@@ -15,6 +15,9 @@ const DEFAULT_CONVERSATION_MODEL =
 const FALLBACK_MODEL =
     "openai/gpt-4o-mini";
 
+const BILINGUAL_MEAL_GUIDANCE =
+    "The user may write in English, Persian, or a mix of both. Understand both languages. Keep the returned JSON in English.";
+
 const SYSTEM_PROMPT = `
 You are the nutrition estimation engine for a calorie tracking application.
 
@@ -426,7 +429,7 @@ export async function parseMealWithAI(
         [
             {
                 role: "system",
-                content: SYSTEM_PROMPT,
+                content: `${SYSTEM_PROMPT}\n\n${BILINGUAL_MEAL_GUIDANCE}`,
             },
             {
                 role: "user",
@@ -455,7 +458,7 @@ export async function continueMealWithAI(
         [
             {
                 role: "system",
-                content: `${SYSTEM_PROMPT}\n\nContinuation rules:\n- You are revising an existing logged meal.\n- The current meal state is provided below.\n- Apply only the user's requested change.\n- Return the full updated meal object, not a patch.\n- Return JSON only.`,
+                content: `${SYSTEM_PROMPT}\n\n${BILINGUAL_MEAL_GUIDANCE}\n\nContinuation rules:\n- You are revising an existing logged meal.\n- The current meal state is provided below.\n- Apply only the user's requested change.\n- Return the full updated meal object, not a patch.\n- Return JSON only.`,
             },
             ...messages,
         ],
