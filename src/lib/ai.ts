@@ -7,12 +7,13 @@ const OPENROUTER_URL =
     "https://openrouter.ai/api/v1/chat/completions";
 
 const DEFAULT_MODEL =
-    "openrouter/free";
+    "google/gemma-4-26b-a4b-it:free";
 
 const DEFAULT_CONVERSATION_MODEL =
-    "openrouter/free";
+    "google/gemma-4-26b-a4b-it:free";
 
-const OPENROUTER_TIMEOUT_MS = 30_000;
+const FALLBACK_MODEL =
+    "openai/gpt-4o-mini";
 
 const SYSTEM_PROMPT = `
 You are the nutrition estimation engine for a calorie tracking application.
@@ -159,6 +160,29 @@ export class AIError extends Error {
     }
 }
 
+function isRateLimited(error: unknown): boolean {
+    return (
+        error instanceof AIError &&
+        (error.status === 429 ||
+            (typeof error.details === "object" &&
+                error.details !== null &&
+                "code" in error.details &&
+                (error.details as { code?: number }).code ===
+                    429))
+    );
+}
+
+function isTruncated(
+    data: OpenRouterResponse
+): boolean {
+    const choice = data.choices?.[0];
+
+    return (
+        choice?.finish_reason === "length" ||
+        !choice?.message?.content
+    );
+}
+
 async function requestOpenRouter(
     messages: OpenRouterMessage[],
     model: string
@@ -171,12 +195,6 @@ async function requestOpenRouter(
             "OPENROUTER_API_KEY is missing."
         );
     }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-        () => controller.abort(),
-        OPENROUTER_TIMEOUT_MS
-    );
 
     let response: Response;
 
@@ -209,31 +227,19 @@ async function requestOpenRouter(
                     },
 
                     provider: {
-                        allow_fallbacks: true,
+                        allow_fallbacks: false,
                         require_parameters: true,
                     },
 
                     temperature: 0.2,
-                    max_tokens: 1000,
+                    max_tokens: 300,
                 }),
 
                 cache: "no-store",
-                signal: controller.signal,
             }
         );
     } catch (error) {
-        if (
-            error instanceof DOMException &&
-            error.name === "AbortError"
-        ) {
-            throw new AIError(
-                `OpenRouter request timed out after ${OPENROUTER_TIMEOUT_MS / 1000} seconds.`
-            );
-        }
-
         throw error;
-    } finally {
-        clearTimeout(timeoutId);
     }
 
     const rawBody =
@@ -306,6 +312,78 @@ async function requestOpenRouter(
     return data;
 }
 
+async function requestWithFallback(
+    messages: OpenRouterMessage[],
+    models: string[]
+): Promise<{
+    data: OpenRouterResponse;
+    model: string;
+}> {
+    let lastError: unknown;
+
+    for (const model of models) {
+        try {
+            const data = await requestOpenRouter(
+                messages,
+                model
+            );
+
+            if (isTruncated(data)) {
+                console.warn(
+                    "OpenRouter returned a truncated completion.",
+                    {
+                        model,
+                        finishReason:
+                            data.choices?.[0]?.finish_reason,
+                    }
+                );
+                lastError = new AIError(
+                    "OpenRouter returned a truncated completion.",
+                    undefined,
+                    {
+                        model,
+                        response: data,
+                    }
+                );
+                continue;
+            }
+
+            return {
+                data,
+                model,
+            };
+        } catch (error) {
+            lastError = error;
+
+            if (isRateLimited(error)) {
+                console.warn(
+                    "OpenRouter rate limited a model; trying fallback.",
+                    {
+                        model,
+                        status:
+                            error instanceof AIError
+                                ? error.status
+                                : undefined,
+                        details:
+                            error instanceof AIError
+                                ? error.details
+                                : undefined,
+                    }
+                );
+                continue;
+            }
+
+            throw error;
+        }
+    }
+
+    throw lastError instanceof Error
+        ? lastError
+        : new AIError(
+              "OpenRouter could not produce a usable response."
+          );
+}
+
 function cleanJsonResponse(
     raw: string
 ): string {
@@ -336,21 +414,31 @@ function cleanJsonResponse(
 export async function parseMealWithAI(
     text: string
 ): Promise<ParsedMeal> {
-    const data = await requestOpenRouter([
-        {
-            role: "system",
-            content: SYSTEM_PROMPT,
-        },
-        {
-            role: "user",
-            content: text,
-        },
-    ], process.env.OPENROUTER_MODEL || DEFAULT_MODEL);
+    const models = [
+        process.env.OPENROUTER_MODEL ||
+            DEFAULT_MODEL,
+        FALLBACK_MODEL,
+    ].filter((value, index, array) =>
+        Boolean(value) && array.indexOf(value) === index
+    );
+
+    const { data, model } = await requestWithFallback(
+        [
+            {
+                role: "system",
+                content: SYSTEM_PROMPT,
+            },
+            {
+                role: "user",
+                content: text,
+            },
+        ],
+        models
+    );
 
     return parseMealResponse(
         data,
-        process.env.OPENROUTER_MODEL ||
-            DEFAULT_MODEL,
+        model,
         undefined
     );
 }
@@ -363,13 +451,20 @@ export async function continueMealWithAI(
         process.env.OPENROUTER_MODEL ||
         DEFAULT_CONVERSATION_MODEL;
 
-    const data = await requestOpenRouter([
-        {
-            role: "system",
-            content: `${SYSTEM_PROMPT}\n\nContinuation rules:\n- Use the complete conversation history as context.\n- Treat the latest user message as an instruction to revise the existing meal.\n- Preserve details the user did not ask to change.\n- Return the complete updated meal object, not a partial patch.\n- Return JSON only.`,
-        },
-        ...messages,
-    ], model);
+    const { data } = await requestWithFallback(
+        [
+            {
+                role: "system",
+                content: `${SYSTEM_PROMPT}\n\nContinuation rules:\n- You are revising an existing logged meal.\n- The current meal state is provided below.\n- Apply only the user's requested change.\n- Return the full updated meal object, not a patch.\n- Return JSON only.`,
+            },
+            ...messages,
+        ],
+        [model, FALLBACK_MODEL].filter(
+            (value, index, array) =>
+                Boolean(value) &&
+                array.indexOf(value) === index
+        )
+    );
 
     return parseMealResponse(
         data,

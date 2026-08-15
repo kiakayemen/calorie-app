@@ -1,15 +1,10 @@
 import { NextRequest } from "next/server";
 
-import {
-    auth,
-} from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
 import { z } from "zod";
 
-import {
-    continueMealWithAI,
-} from "@/lib/ai";
-
+import { continueMealWithAI } from "@/lib/ai";
 import { db } from "@/lib/db";
 
 const FollowUpSchema = z.object({
@@ -29,9 +24,7 @@ export async function POST(
     context: RouteContext
 ) {
     try {
-        const {
-            userId,
-        } = await auth();
+        const { userId } = await auth();
 
         if (!userId) {
             return Response.json(
@@ -40,9 +33,7 @@ export async function POST(
             );
         }
 
-        const {
-            id,
-        } = await context.params;
+        const { id } = await context.params;
 
         let body: unknown;
 
@@ -55,8 +46,7 @@ export async function POST(
             );
         }
 
-        const parsedRequest =
-            FollowUpSchema.safeParse(body);
+        const parsedRequest = FollowUpSchema.safeParse(body);
 
         if (!parsedRequest.success) {
             return Response.json(
@@ -72,13 +62,6 @@ export async function POST(
                 id,
                 userId,
             },
-            include: {
-                messages: {
-                    orderBy: {
-                        createdAt: "asc",
-                    },
-                },
-            },
         });
 
         if (!meal) {
@@ -88,35 +71,28 @@ export async function POST(
             );
         }
 
-        const history = meal.messages.length
-            ? meal.messages.map((message) => ({
-                role:
-                    message.role === "USER"
-                        ? ("user" as const)
-                        : ("assistant" as const),
-                content: message.content,
-            }))
-            : [
-                  {
-                      role: "assistant" as const,
-                      content: JSON.stringify({
-                          title: meal.title,
-                          description: meal.description,
-                          calories: meal.calories,
-                          protein: meal.protein,
-                          carbs: meal.carbs,
-                          fat: meal.fat,
-                          confidence: meal.confidence,
-                          needsClarification:
-                              meal.needsClarification,
-                          clarificationQuestion:
-                              meal.clarificationQuestion,
-                      }),
-                  },
-              ];
-
         const result = await continueMealWithAI([
-            ...history,
+            {
+                role: "system" as const,
+                content:
+                    "You are revising an existing logged meal. The current meal state is provided below. Apply only the user's requested change. Return the full updated meal object, not a patch. Return JSON only.",
+            },
+            {
+                role: "assistant" as const,
+                content: JSON.stringify({
+                    title: meal.title,
+                    description: meal.description,
+                    calories: meal.calories,
+                    protein: meal.protein,
+                    carbs: meal.carbs,
+                    fat: meal.fat,
+                    confidence: meal.confidence,
+                    needsClarification: meal.needsClarification,
+                    clarificationQuestion:
+                        meal.clarificationQuestion,
+                    itemBreakdown: meal.itemBreakdown,
+                }),
+            },
             {
                 role: "user" as const,
                 content: parsedRequest.data.message,
@@ -135,13 +111,11 @@ export async function POST(
                 carbs: result.carbs,
                 fat: result.fat,
                 confidence: result.confidence,
-                needsClarification:
-                    result.needsClarification,
+                needsClarification: result.needsClarification,
                 clarificationQuestion:
                     result.clarificationQuestion,
                 model: result.model,
-                itemBreakdown:
-                    result.itemBreakdown,
+                itemBreakdown: result.itemBreakdown,
             },
         });
 
@@ -149,8 +123,7 @@ export async function POST(
             data: {
                 mealId: meal.id,
                 role: "USER",
-                content:
-                    parsedRequest.data.message,
+                content: parsedRequest.data.message,
             },
         });
 
@@ -172,13 +145,11 @@ export async function POST(
             carbs: updatedMeal.carbs,
             fat: updatedMeal.fat,
             confidence: updatedMeal.confidence,
-            needsClarification:
-                updatedMeal.needsClarification,
+            needsClarification: updatedMeal.needsClarification,
             clarificationQuestion:
                 updatedMeal.clarificationQuestion,
             model: updatedMeal.model,
-            itemBreakdown:
-                updatedMeal.itemBreakdown,
+            itemBreakdown: updatedMeal.itemBreakdown,
             eatenAt: updatedMeal.eatenAt.toISOString(),
             createdAt: updatedMeal.createdAt.toISOString(),
         });
